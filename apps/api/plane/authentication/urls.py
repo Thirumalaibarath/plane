@@ -44,6 +44,10 @@ from .views import (
     GiteaOauthInitiateEndpoint,
     GiteaCallbackSpaceEndpoint,
     GiteaOauthInitiateSpaceEndpoint,
+    DAuthCallbackEndpoint,
+    DAuthInitiateEndpoint,
+    DAuthCallbackSpaceEndpoint,
+    DAuthInitiateSpaceEndpoint,
 )
 
 urlpatterns = [
@@ -149,5 +153,18 @@ urlpatterns = [
         "spaces/gitea/callback/",
         GiteaCallbackSpaceEndpoint.as_view(),
         name="space-gitea-callback",
+    ),
+    ## DAuth Oauth
+    path("dauth/", DAuthInitiateEndpoint.as_view(), name="dauth-initiate"),
+    path("dauth/callback/", DAuthCallbackEndpoint.as_view(), name="dauth-callback"),
+    path(
+        "spaces/dauth/",
+        DAuthInitiateSpaceEndpoint.as_view(),
+        name="space-dauth-initiate",
+    ),
+    path(
+        "spaces/dauth/callback/",
+        DAuthCallbackSpaceEndpoint.as_view(),
+        name="space-dauth-callback",
     ),
 ]

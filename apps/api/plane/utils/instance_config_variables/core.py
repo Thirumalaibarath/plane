@@ -162,6 +162,45 @@ gitea_config_variables = [
     },
 ]
 
+dauth_config_variables = [
+    {
+        "key": "IS_DAUTH_ENABLED",
+        "value": os.environ.get("IS_DAUTH_ENABLED", "1"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+    {
+        "key": "DAUTH_HOST",
+        "value": os.environ.get("DAUTH_HOST", "https://auth.delta.nitt.edu"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+    {
+        "key": "DAUTH_CLIENT_ID",
+        "value": os.environ.get("DAUTH_CLIENT_ID"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+    {
+        "key": "DAUTH_CLIENT_SECRET",
+        "value": os.environ.get("DAUTH_CLIENT_SECRET"),
+        "category": "DAUTH",
+        "is_encrypted": True,
+    },
+    {
+        "key": "DAUTH_REDIRECT_URI",
+        "value": os.environ.get("DAUTH_REDIRECT_URI"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+    {
+        "key": "ENABLE_DAUTH_SYNC",
+        "value": os.environ.get("ENABLE_DAUTH_SYNC", "1"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+]
+
 smtp_config_variables = [
     {
         "key": "ENABLE_SMTP",
@@ -257,6 +296,7 @@ core_config_variables = [
     *github_config_variables,
     *gitlab_config_variables,
     *gitea_config_variables,
+    *dauth_config_variables,
     *smtp_config_variables,
     *llm_config_variables,
     *unsplash_config_variables,

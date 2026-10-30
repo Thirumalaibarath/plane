@@ -6,78 +6,39 @@
 
 // plane imports
 import { useSearchParams } from "next/navigation";
-import { useTheme } from "next-themes";
 import { API_BASE_URL } from "@plane/constants";
 import type { TOAuthConfigs, TOAuthOption } from "@plane/types";
-// assets
-import giteaLogo from "@/app/assets/logos/gitea-logo.svg?url";
-import githubLightLogo from "@/app/assets/logos/github-black.png?url";
-import githubDarkLogo from "@/app/assets/logos/github-dark.svg?url";
-import gitlabLogo from "@/app/assets/logos/gitlab-logo.svg?url";
-import googleLogo from "@/app/assets/logos/google-logo.svg?url";
 // hooks
 import { useInstance } from "@/hooks/store/use-instance";
 
+function DAuthLogo({ className = "h-4 w-4" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M20 5L36 34H4L20 5Z" stroke="#10B981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M20 14L29 30H11L20 14Z" fill="#10B981" />
+    </svg>
+  );
+}
+
 export const useCoreOAuthConfig = (oauthActionText: string): TOAuthConfigs => {
-  //router
+  // router
   const searchParams = useSearchParams();
   // query params
   const next_path = searchParams.get("next_path");
-  // theme
-  const { resolvedTheme } = useTheme();
   // store hooks
   const { config } = useInstance();
-  // derived values
-  const isOAuthEnabled =
-    (config &&
-      (config?.is_google_enabled ||
-        config?.is_github_enabled ||
-        config?.is_gitlab_enabled ||
-        config?.is_gitea_enabled)) ||
-    false;
+
+  const isOAuthEnabled = config?.is_dauth_enabled ?? true;
+
   const oAuthOptions: TOAuthOption[] = [
     {
-      id: "google",
-      text: `${oauthActionText} with Google`,
-      icon: <img src={googleLogo} height={18} width={18} alt="Google Logo" />,
+      id: "dauth",
+      text: `${oauthActionText} with DAuth`,
+      icon: <DAuthLogo className="h-5 w-5" />,
       onClick: () => {
-        window.location.assign(`${API_BASE_URL}/auth/google/${next_path ? `?next_path=${next_path}` : ``}`);
+        window.location.assign(`${API_BASE_URL}/auth/spaces/dauth/${next_path ? `?next_path=${next_path}` : ``}`);
       },
-      enabled: config?.is_google_enabled,
-    },
-    {
-      id: "github",
-      text: `${oauthActionText} with GitHub`,
-      icon: (
-        <img
-          src={resolvedTheme === "dark" ? githubLightLogo : githubDarkLogo}
-          height={18}
-          width={18}
-          alt="GitHub Logo"
-        />
-      ),
-      onClick: () => {
-        window.location.assign(`${API_BASE_URL}/auth/github/${next_path ? `?next_path=${next_path}` : ``}`);
-      },
-      enabled: config?.is_github_enabled,
-    },
-    {
-      id: "gitlab",
-      text: `${oauthActionText} with GitLab`,
-      icon: <img src={gitlabLogo} height={18} width={18} alt="GitLab Logo" />,
-      onClick: () => {
-        window.location.assign(`${API_BASE_URL}/auth/gitlab/${next_path ? `?next_path=${next_path}` : ``}`);
-      },
-      enabled: config?.is_gitlab_enabled,
-    },
-    {
-      id: "gitea",
-      text: `${oauthActionText} with Gitea`,
-      icon: <img src={giteaLogo} height={18} width={18} alt="Gitea Logo" />,
-      onClick: () => {
-        window.location.assign(`${API_BASE_URL}/auth/gitea/${next_path ? `?next_path=${next_path}` : ``}`);
-      },
-      enabled: config?.is_gitea_enabled,
+      enabled: isOAuthEnabled,
     },
   ];
 

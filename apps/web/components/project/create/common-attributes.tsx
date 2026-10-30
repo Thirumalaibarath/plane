@@ -27,6 +27,28 @@ type Props = {
   handleFormOnChange?: () => void;
 };
 
+const CLUB_PRESETS = [
+  {
+    label: "🎓 Inductions Pipeline",
+    name: "Inductions 2026",
+    identifier: "INDUCT",
+    description:
+      "Club recruitment & candidate evaluation pipeline (Application -> Task -> Interviews -> Deliberation -> Selection)",
+  },
+  {
+    label: "⚡ Hackathon Sprint",
+    name: "Hackathon Sprint",
+    identifier: "HACK",
+    description: "48-Hour sprint tracking with milestones: Ideation, MVP, Testing, and Demo deliverables",
+  },
+  {
+    label: "🖥️ Infra & Servers",
+    name: "Infra & Assets",
+    identifier: "INFRA",
+    description: "Club VPS, GPU compute servers, domain registrations, SSL renewals & lab hardware tracking",
+  },
+];
+
 function ProjectCommonAttributes(props: Props) {
   const { setValue, isMobile, shouldAutoSyncIdentifier, setShouldAutoSyncIdentifier, handleFormOnChange } = props;
   const {
@@ -58,6 +80,25 @@ function ProjectCommonAttributes(props: Props) {
   };
   return (
     <div className="grid grid-cols-1 gap-x-2 gap-y-3 md:grid-cols-4">
+      <div className="flex flex-wrap items-center gap-1.5 pb-1 md:col-span-4">
+        <span className="mr-1 text-11 font-medium text-tertiary">Club Presets:</span>
+        {CLUB_PRESETS.map((preset) => (
+          <button
+            key={preset.identifier}
+            type="button"
+            onClick={() => {
+              setValue("name", preset.name, { shouldValidate: true, shouldDirty: true });
+              setValue("identifier", preset.identifier, { shouldValidate: true, shouldDirty: true });
+              setValue("description", preset.description, { shouldValidate: true, shouldDirty: true });
+              setShouldAutoSyncIdentifier(false);
+              handleFormOnChange?.();
+            }}
+            className="cursor-pointer rounded-md border border-subtle bg-layer-2 px-2.5 py-1 text-11 font-medium text-secondary transition-colors hover:bg-layer-2-hover hover:text-primary"
+          >
+            {preset.label}
+          </button>
+        ))}
+      </div>
       <div className="md:col-span-3">
         <Controller
           control={control}

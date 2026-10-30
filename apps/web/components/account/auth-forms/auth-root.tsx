@@ -22,11 +22,9 @@ import {
 } from "@/helpers/authentication.helper";
 // hooks
 import { useOAuthConfig } from "@/hooks/oauth";
-import { useInstance } from "@/hooks/store/use-instance";
 // local imports
 import { TermsAndConditions } from "../terms-and-conditions";
 import { AuthHeader, AuthHeaderBase } from "./auth-header";
-import { AuthFormRoot } from "./form-root";
 
 type TAuthRoot = {
   authMode: EAuthModes;
@@ -45,17 +43,15 @@ export const AuthRoot = observer(function AuthRoot(props: TAuthRoot) {
   // states
   const [authMode, setAuthMode] = useState<EAuthModes | undefined>(undefined);
   const [authStep, setAuthStep] = useState<EAuthSteps>(EAuthSteps.EMAIL);
-  const [email, setEmail] = useState(emailParam ? emailParam.toString() : "");
+  const [email] = useState(emailParam ? emailParam.toString() : "");
   const [errorInfo, setErrorInfo] = useState<TAuthErrorInfo | undefined>(undefined);
-  // store hooks
-  const { config } = useInstance();
   // translation
   const { t } = useTranslation();
   // derived values
   const oAuthActionText = authMode === EAuthModes.SIGN_UP ? "Sign up" : "Sign in";
   const { isOAuthEnabled, oAuthOptions } = useOAuthConfig(oAuthActionText);
-  const isEmailBasedAuthEnabled = config?.is_email_password_enabled || config?.is_magic_login_enabled;
-  const noAuthMethodsAvailable = !isOAuthEnabled && !isEmailBasedAuthEnabled;
+  // Exclusive DAuth authentication: email/password and magic login disabled
+  const noAuthMethodsAvailable = !isOAuthEnabled;
 
   useEffect(() => {
     if (!authMode && currentAuthMode) setAuthMode(currentAuthMode);
@@ -136,23 +132,7 @@ export const AuthRoot = observer(function AuthRoot(props: TAuthRoot) {
         currentAuthStep={authStep}
       />
       {isOAuthEnabled && (
-        <OAuthOptions
-          options={oAuthOptions}
-          compact={authStep === EAuthSteps.PASSWORD}
-          showDivider={isEmailBasedAuthEnabled}
-        />
-      )}
-      {isEmailBasedAuthEnabled && (
-        <AuthFormRoot
-          authStep={authStep}
-          authMode={authMode}
-          email={email}
-          setEmail={(email) => setEmail(email)}
-          setAuthMode={(authMode) => setAuthMode(authMode)}
-          setAuthStep={(authStep) => setAuthStep(authStep)}
-          setErrorInfo={(errorInfo) => setErrorInfo(errorInfo)}
-          currentAuthMode={currentAuthMode}
-        />
+        <OAuthOptions options={oAuthOptions} compact={authStep === EAuthSteps.PASSWORD} showDivider={false} />
       )}
       <TermsAndConditions authType={authMode} />
     </AuthContainer>

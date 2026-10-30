@@ -64,22 +64,9 @@ def _create_otlp_metric_exporter():
 
 
 def _collect_and_push_metrics() -> None:
-    """
-    Collect instance metrics and push them to OTEL collector.
+    logger.debug("Telemetry disabled, skipping metrics push")
+    return
 
-    Uses OTEL metrics SDK to push gauge metrics directly to the collector,
-    replacing the previous span-based tracing approach.
-    """
-    # Check if the instance is registered
-    instance = Instance.objects.first()
-
-    if instance is None:
-        logger.debug("No instance registered, skipping metrics push")
-        return
-
-    if not instance.is_telemetry_enabled:
-        logger.debug("Telemetry disabled, skipping metrics push")
-        return
 
     # Configure OTEL metrics (gRPC default, or HTTP if OTLP_METRICS_PROTOCOL=http)
     protocol = (os.environ.get("OTLP_METRICS_PROTOCOL") or "grpc").strip().lower()
