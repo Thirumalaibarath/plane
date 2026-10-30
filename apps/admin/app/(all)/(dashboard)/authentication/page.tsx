@@ -4,175 +4,73 @@
  * See the LICENSE file for details.
  */
 
-import { useCallback, useEffect, useRef, useState } from "react";
 import { observer } from "mobx-react";
-import { useTheme } from "next-themes";
-import useSWR from "swr";
-// plane internal packages
-import { Switch } from "@makeplane/propel/components/switch";
-import type { TInstanceConfigurationKeys, TInstanceAuthenticationModes } from "@plane/types";
-import { cn, resolveGeneralTheme } from "@plane/utils";
 // components
 import { PageWrapper } from "@/components/common/page-wrapper";
-import { AuthenticationMethodCard } from "@/components/authentication/authentication-method-card";
-import { Skeleton } from "@/components/common/skeleton";
-import { setPromiseToast, setToast } from "@plane/blocks/toast";
-// helpers
-import { canDisableAuthMethod } from "@/helpers/authentication";
-// hooks
-import { useAuthenticationModes } from "@/hooks/oauth";
-import { useInstance } from "@/hooks/store";
 // types
 import type { Route } from "./+types/page";
 
-const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(_props: Route.ComponentProps) {
-  // theme
-  const { resolvedTheme: resolvedThemeAdmin } = useTheme();
-  const resolvedTheme = resolveGeneralTheme(resolvedThemeAdmin);
-  // Ref to store authentication modes for validation (avoids circular dependency)
-  const authenticationModesRef = useRef<TInstanceAuthenticationModes[]>([]);
-  // state
-  const [isSubmitting, setIsSubmitting] = useState<boolean>(false);
-  // store hooks
-  const { fetchInstanceConfigurations, formattedConfig, updateInstanceConfigurations } = useInstance();
-  // derived values
-  const enableSignUpConfig = formattedConfig?.ENABLE_SIGNUP ?? "";
-
-  useSWR("INSTANCE_CONFIGURATIONS", () => fetchInstanceConfigurations());
-
-  // Create updateConfig with validation - uses authenticationModesRef for current modes
-  const updateConfig = useCallback(
-    (key: TInstanceConfigurationKeys, value: string): void => {
-      // Check if trying to disable (value === "0")
-      if (value === "0") {
-        // Check if this key is an authentication method key
-        const currentAuthModes = authenticationModesRef.current;
-        const isAuthMethodKey = currentAuthModes.some((method) => method.enabledConfigKey === key);
-
-        // Only validate if this is an authentication method key
-        if (isAuthMethodKey) {
-          const canDisable = canDisableAuthMethod(key, currentAuthModes, formattedConfig);
-
-          if (!canDisable) {
-            setToast({
-              type: "error",
-              title: "Cannot disable authentication",
-              message:
-                "At least one authentication method must remain enabled. Please enable another method before disabling this one.",
-            });
-            return;
-          }
-        }
-      }
-
-      // Proceed with the update
-      setIsSubmitting(true);
-
-      const payload = {
-        [key]: value,
-      };
-
-      const updateConfigPromise = updateInstanceConfigurations(payload);
-
-      setPromiseToast(updateConfigPromise, {
-        loading: "Saving configuration",
-        success: {
-          title: "Success",
-          message: () => "Configuration saved successfully",
-        },
-        error: {
-          title: "Error",
-          message: () => "Failed to save configuration",
-        },
-      });
-
-      void updateConfigPromise
-        .then(() => {
-          setIsSubmitting(false);
-          return undefined;
-        })
-        .catch((err) => {
-          console.error(err);
-          setIsSubmitting(false);
-        });
-    },
-    [formattedConfig, updateInstanceConfigurations]
+function DeltaLogo({ className = "size-8" }: { className?: string }) {
+  return (
+    <svg viewBox="0 0 595 554" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M311.318 0.000175227L44.0876 512.313L129.011 554L396.242 41.6873L311.318 0.000175227Z" fill="#21C00F" />
+      <path d="M158.504 71.3226L481.726 552.313L561.505 501.862L238.283 20.8709L158.504 71.3226Z" fill="#21C00F" />
+      <path d="M1.34268e-05 471.511L591.463 492.851L595 400.585L3.53746 379.245L1.34268e-05 471.511Z" fill="#21C00F" />
+    </svg>
   );
+}
 
-  // Get authentication modes - this will use updateConfig which includes validation
-  const authenticationModes = useAuthenticationModes({
-    disabled: isSubmitting,
-    updateConfig,
-    resolvedTheme,
-  });
-
-  // Update ref with latest authentication modes (updateConfig reads it only from event handlers)
-  useEffect(() => {
-    authenticationModesRef.current = authenticationModes;
-  }, [authenticationModes]);
-
+const InstanceAuthenticationPage = observer(function InstanceAuthenticationPage(_props: Route.ComponentProps) {
   return (
     <PageWrapper
       header={{
-        title: "Manage authentication modes for your instance",
-        description: "Configure authentication modes for your team and restrict sign-ups to be invite only.",
+        title: "Authentication",
+        description: "Configure and manage authentication modes for your instance.",
       }}
     >
-      {formattedConfig ? (
-        <div className="space-y-3">
-          <div className={cn("flex w-full items-center gap-14 rounded-sm")}>
-            <div className="flex grow items-center gap-4">
-              <div className="grow">
-                <div className="pb-1 text-16 font-medium">Allow anyone to sign up even without an invite</div>
-                <div className={cn("text-11 leading-5 font-regular text-tertiary")}>
-                  Toggling this off will only let users sign up when they are invited.
-                </div>
+      <div className="space-y-4">
+        <div className="shadow-sm flex flex-col gap-4 rounded-md border border-subtle bg-surface-1 p-5">
+          <div className="flex items-center gap-4">
+            <DeltaLogo className="size-9 flex-shrink-0" />
+            <div className="flex-1">
+              <div className="flex items-center gap-2">
+                <h3 className="text-16 font-semibold text-primary">DAuth (Single Sign-On)</h3>
+                <span className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 inline-flex items-center gap-1.5 rounded-full px-2.5 py-0.5 text-11 font-medium">
+                  <span className="bg-emerald-500 size-1.5 rounded-full" />
+                  Active
+                </span>
               </div>
-            </div>
-            <div className={`shrink-0 pr-4 ${isSubmitting && "opacity-70"}`}>
-              <div className="flex items-center gap-4">
-                <Switch
-                  aria-label="Allow anyone to sign up even without an invite"
-                  checked={Boolean(parseInt(enableSignUpConfig))}
-                  onCheckedChange={() => {
-                    if (Boolean(parseInt(enableSignUpConfig)) === true) {
-                      updateConfig("ENABLE_SIGNUP", "0");
-                    } else {
-                      updateConfig("ENABLE_SIGNUP", "1");
-                    }
-                  }}
-                  size="sm"
-                  disabled={isSubmitting}
-                />
-              </div>
+              <p className="mt-1 text-13 text-secondary">
+                Instance authentication is exclusively handled by Delta Force DAuth. Passwords and third-party OAuth
+                providers are disabled.
+              </p>
             </div>
           </div>
-          <div className="text-lg pt-6 font-medium">Available authentication modes</div>
-          {authenticationModes.map((method) => (
-            <AuthenticationMethodCard
-              key={method.key}
-              name={method.name}
-              description={method.description}
-              icon={method.icon}
-              config={method.config}
-              disabled={isSubmitting}
-              unavailable={method.unavailable}
-            />
-          ))}
+
+          <div className="mt-2 grid grid-cols-1 gap-3 border-t border-subtle pt-4 sm:grid-cols-2">
+            <div>
+              <span className="tracking-wider text-11 font-medium text-tertiary uppercase">Auth Provider</span>
+              <p className="mt-0.5 text-13 font-medium text-primary">Delta Force (NIT Trichy)</p>
+            </div>
+            <div>
+              <span className="tracking-wider text-11 font-medium text-tertiary uppercase">Auth Host</span>
+              <p className="font-mono mt-0.5 text-13 text-primary">https://auth.delta.nitt.edu</p>
+            </div>
+            <div>
+              <span className="tracking-wider text-11 font-medium text-tertiary uppercase">Scopes</span>
+              <p className="font-mono mt-0.5 text-13 text-secondary">email, openid, profile, user</p>
+            </div>
+            <div>
+              <span className="tracking-wider text-11 font-medium text-tertiary uppercase">Callback URI</span>
+              <p className="font-mono mt-0.5 text-13 text-secondary">/auth/dauth/callback/</p>
+            </div>
+          </div>
         </div>
-      ) : (
-        <Skeleton className="space-y-10">
-          <Skeleton.Item height="50px" width="75%" />
-          <Skeleton.Item height="50px" width="75%" />
-          <Skeleton.Item height="50px" width="40%" />
-          <Skeleton.Item height="50px" width="40%" />
-          <Skeleton.Item height="50px" width="20%" />
-        </Skeleton>
-      )}
+      </div>
     </PageWrapper>
   );
 });
 
-export const meta: Route.MetaFunction = () => [{ title: "Authentication Settings - Plane Web" }];
+export const meta: Route.MetaFunction = () => [{ title: "Authentication Settings - Plane God Mode" }];
 
 export default InstanceAuthenticationPage;

@@ -4,13 +4,12 @@
  * See the LICENSE file for details.
  */
 
-import { BrainCog } from "lucide-react";
 // plane imports
 import { ImageOutline, LockOutline, MailOutline, SettingsOutline, WorkspaceOutline } from "@makeplane/propel/icons";
 // types
 import type { TSidebarMenuItem } from "./types";
 
-export type TCoreSidebarMenuKey = "general" | "email" | "workspace" | "authentication" | "ai" | "image";
+export type TCoreSidebarMenuKey = "general" | "email" | "workspace" | "authentication" | "image";
 
 export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem> = {
   general: {
@@ -34,14 +33,8 @@ export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem>
   authentication: {
     Icon: LockOutline,
     name: "Authentication",
-    description: "Configure authentication modes.",
+    description: "DAuth Single Sign-On.",
     href: `/authentication/`,
-  },
-  ai: {
-    Icon: BrainCog,
-    name: "Artificial intelligence",
-    description: "Configure your OpenAI creds.",
-    href: `/ai/`,
   },
   image: {
     Icon: ImageOutline,
