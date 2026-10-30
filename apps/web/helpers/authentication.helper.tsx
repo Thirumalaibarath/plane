@@ -81,6 +81,7 @@ export enum EAuthenticationErrorCodes {
   GITHUB_OAUTH_PROVIDER_ERROR = "5120",
   GITLAB_OAUTH_PROVIDER_ERROR = "5121",
   DAUTH_OAUTH_PROVIDER_ERROR = "5126",
+  DAUTH_USER_NOT_ALLOWED = "5127",
   // Reset Password
   INVALID_PASSWORD_TOKEN = "5125",
   EXPIRED_PASSWORD_TOKEN = "5130",
@@ -297,6 +298,11 @@ const errorCodeMessages: {
     title: `DAuth OAuth error`,
     message: () => `DAuth OAuth provider error. Please try again.`,
   },
+  [EAuthenticationErrorCodes.DAUTH_USER_NOT_ALLOWED]: {
+    title: `Access Restricted to Delta Force Members`,
+    message: () =>
+      `Only authorized club members can sign in. Please contact an administrator if your roll number or email should be added to the allowlist.`,
+  },
 
   // Reset Password
   [EAuthenticationErrorCodes.INVALID_PASSWORD_TOKEN]: {
@@ -426,6 +432,7 @@ export const authErrorHandler = (errorCode: EAuthenticationErrorCodes, email?: s
     EAuthenticationErrorCodes.GITHUB_OAUTH_PROVIDER_ERROR,
     EAuthenticationErrorCodes.GITLAB_OAUTH_PROVIDER_ERROR,
     EAuthenticationErrorCodes.DAUTH_OAUTH_PROVIDER_ERROR,
+    EAuthenticationErrorCodes.DAUTH_USER_NOT_ALLOWED,
     EAuthenticationErrorCodes.INVALID_PASSWORD_TOKEN,
     EAuthenticationErrorCodes.EXPIRED_PASSWORD_TOKEN,
     EAuthenticationErrorCodes.INCORRECT_OLD_PASSWORD,

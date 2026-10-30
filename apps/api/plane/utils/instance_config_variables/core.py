@@ -199,6 +199,18 @@ dauth_config_variables = [
         "category": "DAUTH",
         "is_encrypted": False,
     },
+    {
+        "key": "DAUTH_ENFORCE_ALLOWLIST",
+        "value": os.environ.get("DAUTH_ENFORCE_ALLOWLIST", "0"),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
+    {
+        "key": "DAUTH_ALLOWED_USERS",
+        "value": os.environ.get("DAUTH_ALLOWED_USERS", ""),
+        "category": "DAUTH",
+        "is_encrypted": False,
+    },
 ]
 
 smtp_config_variables = [

@@ -4,12 +4,13 @@
  * See the LICENSE file for details.
  */
 
+import { Users } from "lucide-react";
 // plane imports
 import { ImageOutline, LockOutline, MailOutline, SettingsOutline, WorkspaceOutline } from "@makeplane/propel/icons";
 // types
 import type { TSidebarMenuItem } from "./types";
 
-export type TCoreSidebarMenuKey = "general" | "email" | "workspace" | "authentication" | "image";
+export type TCoreSidebarMenuKey = "general" | "email" | "workspace" | "authentication" | "users" | "image";
 
 export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem> = {
   general: {
@@ -35,6 +36,12 @@ export const coreSidebarMenuLinks: Record<TCoreSidebarMenuKey, TSidebarMenuItem>
     name: "Authentication",
     description: "DAuth Single Sign-On.",
     href: `/authentication/`,
+  },
+  users: {
+    Icon: Users,
+    name: "Users",
+    description: "Manage users & member allowlist.",
+    href: `/users/`,
   },
   image: {
     Icon: ImageOutline,

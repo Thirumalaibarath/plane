@@ -41,6 +41,25 @@ class InstanceConfigurationEndpoint(BaseAPIView):
     @invalidate_cache(path="/api/instances/configurations/", user=False)
     @invalidate_cache(path="/api/instances/", user=False)
     def patch(self, request):
+        existing_keys = set(
+            InstanceConfiguration.objects.filter(key__in=request.data.keys()).values_list("key", flat=True)
+        )
+        new_configs = []
+        for key, raw_value in request.data.items():
+            if key not in existing_keys:
+                value = "" if raw_value is None else str(raw_value).strip()
+                category = "DAUTH" if key.startswith("DAUTH_") else "INSTANCE"
+                new_configs.append(
+                    InstanceConfiguration(
+                        key=key,
+                        value=value,
+                        category=category,
+                        is_encrypted=False,
+                    )
+                )
+        if new_configs:
+            InstanceConfiguration.objects.bulk_create(new_configs)
+
         configurations = InstanceConfiguration.objects.filter(key__in=request.data.keys())
 
         bulk_configurations = []

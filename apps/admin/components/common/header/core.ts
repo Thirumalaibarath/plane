@@ -8,6 +8,7 @@ export const CORE_HEADER_SEGMENT_LABELS: Record<string, string> = {
   general: "General",
   email: "Email",
   authentication: "Authentication",
+  users: "Users",
   image: "Image",
   workspace: "Workspace",
   create: "Create",

@@ -155,6 +155,50 @@ class DAuthOAuthProvider(OauthAdapter):
             if re.match(r"^\d{7,10}$", local_part):
                 roll_number = local_part
 
+        # Member allowlist enforcement check
+        from plane.license.models import InstanceConfiguration, InstanceAdmin
+        from plane.db.models import User
+
+        enforce_config = InstanceConfiguration.objects.filter(key="DAUTH_ENFORCE_ALLOWLIST").first()
+        if enforce_config and enforce_config.value is not None:
+            enforce_allowlist = str(enforce_config.value).strip() in ("1", "true", "True")
+        else:
+            enforce_allowlist = str(os.environ.get("DAUTH_ENFORCE_ALLOWLIST", "0")).strip() in ("1", "true", "True")
+
+        if enforce_allowlist:
+            allowed_users_raw = os.environ.get("DAUTH_ALLOWED_USERS", "")
+            allowed_config = InstanceConfiguration.objects.filter(key="DAUTH_ALLOWED_USERS").first()
+            if allowed_config and allowed_config.value is not None:
+                allowed_users_raw = allowed_config.value
+
+            tokens = re.split(r"[\s,\n;]+", allowed_users_raw.strip())
+            allowed_set = {t.lower().strip() for t in tokens if t.strip()}
+
+            user_email = email.lower().strip()
+            user_roll = (roll_number or "").lower().strip()
+            local_email = user_email.split("@")[0] if "@" in user_email else ""
+
+            is_allowed = (
+                user_email in allowed_set
+                or (user_roll and user_roll in allowed_set)
+                or (local_email and local_email in allowed_set)
+            )
+
+            # Never lock out instance admins
+            is_instance_admin = (
+                User.objects.filter(email__iexact=user_email, is_superuser=True).exists()
+                or InstanceAdmin.objects.filter(user__email__iexact=user_email, role__gte=15).exists()
+            )
+
+            if not is_allowed and not is_instance_admin:
+                self.logger.warning(
+                    f"DAuth login rejected for {email} (roll: {roll_number}): not in allowlist"
+                )
+                raise AuthenticationException(
+                    error_code=AUTHENTICATION_ERROR_CODES["DAUTH_USER_NOT_ALLOWED"],
+                    error_message="DAUTH_USER_NOT_ALLOWED",
+                )
+
         display_name = f"{name} ({roll_number})" if roll_number and name else (name or email)
 
         provider_id = str(user_info.get("id") or user_info.get("userId") or roll_number or email)
