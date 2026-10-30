@@ -1,5 +1,6 @@
 services:
   web:
+    platform: linux/amd64
     container_name: web
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-frontend:${TAG:-latest}
     restart: always
@@ -7,6 +8,7 @@ services:
       - api
 
   admin:
+    platform: linux/amd64
     container_name: admin
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-admin:${TAG:-latest}
     restart: always
@@ -15,6 +17,7 @@ services:
       - web
 
   space:
+    platform: linux/amd64
     container_name: space
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-space:${TAG:-latest}
     restart: always
@@ -23,6 +26,7 @@ services:
       - web
 
   api:
+    platform: linux/amd64
     container_name: api
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-backend:${TAG:-latest}
     restart: always
@@ -34,6 +38,7 @@ services:
       - plane-redis
 
   worker:
+    platform: linux/amd64
     container_name: bgworker
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-backend:${TAG:-latest}
     restart: always
@@ -46,6 +51,7 @@ services:
       - plane-redis
 
   beat-worker:
+    platform: linux/amd64
     container_name: beatworker
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-backend:${TAG:-latest}
     restart: always
@@ -58,6 +64,7 @@ services:
       - plane-redis
 
   migrator:
+    platform: linux/amd64
     container_name: plane-migrator
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-backend:${TAG:-latest}
     restart: "no"
@@ -69,9 +76,18 @@ services:
       - plane-redis
 
   live:
+    platform: linux/amd64
     container_name: plane-live
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-live:${TAG:-latest}
     restart: always
+    environment:
+      PORT: 3000
+      API_BASE_URL: "http://api:8000"
+      WEB_BASE_URL: "http://web:3000"
+      LIVE_BASE_URL: "http://live:3000"
+      LIVE_BASE_PATH: "/live"
+      LIVE_SERVER_SECRET_KEY: "secret-key"
+      REDIS_URL: "redis://plane-redis:6379/"
 
   plane-db:
     container_name: plane-db
@@ -120,12 +136,15 @@ services:
       MINIO_ROOT_PASSWORD: ${AWS_SECRET_ACCESS_KEY}
 
   proxy:
+    platform: linux/amd64
     container_name: proxy
     image: ${IMAGE_PREFIX:-ghcr.io/OWNER}/plane-proxy:${TAG:-latest}
     restart: always
     ports:
       - ${LISTEN_HTTP_PORT:-80}:80
       - ${LISTEN_HTTPS_PORT:-443}:443
+    env_file:
+      - .env
     environment:
       FILE_SIZE_LIMIT: ${FILE_SIZE_LIMIT:-5242880}
       BUCKET_NAME: ${AWS_S3_BUCKET_NAME:-uploads}
