@@ -43,6 +43,11 @@ class DAuthOAuthProvider(OauthAdapter):
             ]
         )
 
+        DAUTH_CLIENT_ID = DAUTH_CLIENT_ID or os.environ.get("DAUTH_CLIENT_ID")
+        DAUTH_CLIENT_SECRET = DAUTH_CLIENT_SECRET or os.environ.get("DAUTH_CLIENT_SECRET")
+        DAUTH_HOST = DAUTH_HOST or os.environ.get("DAUTH_HOST", "https://auth.delta.nitt.edu")
+        DAUTH_REDIRECT_URI = DAUTH_REDIRECT_URI or os.environ.get("DAUTH_REDIRECT_URI")
+
         if not (DAUTH_CLIENT_ID and DAUTH_CLIENT_SECRET):
             raise AuthenticationException(
                 error_code=AUTHENTICATION_ERROR_CODES["DAUTH_NOT_CONFIGURED"],

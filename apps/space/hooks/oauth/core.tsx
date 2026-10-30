@@ -13,9 +13,10 @@ import { useInstance } from "@/hooks/store/use-instance";
 
 function DAuthLogo({ className = "h-4 w-4" }: { className?: string }) {
   return (
-    <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
-      <path d="M20 5L36 34H4L20 5Z" stroke="#10B981" strokeWidth="3.5" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M20 14L29 30H11L20 14Z" fill="#10B981" />
+    <svg viewBox="0 0 595 554" fill="none" xmlns="http://www.w3.org/2000/svg" className={className}>
+      <path d="M311.318 0.000175227L44.0876 512.313L129.011 554L396.242 41.6873L311.318 0.000175227Z" fill="#21C00F" />
+      <path d="M158.504 71.3226L481.726 552.313L561.505 501.862L238.283 20.8709L158.504 71.3226Z" fill="#21C00F" />
+      <path d="M1.34268e-05 471.511L591.463 492.851L595 400.585L3.53746 379.245L1.34268e-05 471.511Z" fill="#21C00F" />
     </svg>
   );
 }
