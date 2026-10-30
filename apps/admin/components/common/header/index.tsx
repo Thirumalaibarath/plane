@@ -8,8 +8,9 @@ import { Fragment } from "react";
 import { observer } from "mobx-react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
+import { useTheme as useNextTheme } from "next-themes";
 // icons
-import { Menu } from "lucide-react";
+import { Menu, Sun, Moon } from "lucide-react";
 import { SettingsOutline } from "@makeplane/propel/icons";
 // plane internal packages
 import {
@@ -62,6 +63,20 @@ const generateBreadcrumbItems = (pathname: string) => {
   return breadcrumbItems;
 };
 
+export function ThemeToggle() {
+  const { resolvedTheme, setTheme } = useNextTheme();
+  return (
+    <button
+      type="button"
+      aria-label="Toggle theme"
+      onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+      className="flex size-7 items-center justify-center rounded-sm border border-subtle bg-surface-2 text-secondary transition-colors hover:bg-surface-1 hover:text-primary focus:outline-none"
+    >
+      {resolvedTheme === "dark" ? <Sun className="size-3.5" /> : <Moon className="size-3.5" />}
+    </button>
+  );
+}
+
 export const AdminHeader = observer(function AdminHeader() {
   const pathName = usePathname();
 
@@ -96,6 +111,9 @@ export const AdminHeader = observer(function AdminHeader() {
             </BreadcrumbList>
           </Breadcrumb>
         </div>
+      </div>
+      <div className="flex items-center gap-2">
+        <ThemeToggle />
       </div>
     </div>
   );

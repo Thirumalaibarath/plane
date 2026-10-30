@@ -60,3 +60,15 @@ class InstanceUserEndpoint(BaseAPIView):
             user.is_active = bool(request.data["is_active"])
             user.save(update_fields=["is_active"])
         return Response({"status": "success", "is_active": user.is_active}, status=status.HTTP_200_OK)
+
+    def delete(self, request, pk=None):
+        user_id = pk or request.data.get("user_id")
+        if not user_id:
+            return Response({"error": "User ID is required"}, status=status.HTTP_400_BAD_REQUEST)
+        user = User.objects.filter(id=user_id, is_bot=False).first()
+        if not user:
+            return Response({"error": "User not found"}, status=status.HTTP_404_NOT_FOUND)
+        if user == request.user:
+            return Response({"error": "Cannot delete your own admin account"}, status=status.HTTP_400_BAD_REQUEST)
+        user.delete()
+        return Response({"status": "deleted"}, status=status.HTTP_200_OK)

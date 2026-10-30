@@ -4,35 +4,27 @@
  * See the LICENSE file for details.
  */
 
-import { useMemo, useState } from "react";
+import { useState } from "react";
 import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
-import { HideOutline, ShowOutline } from "@makeplane/propel/icons";
 import { Field } from "@makeplane/propel/components/field";
 import { Input, InputGroup } from "@makeplane/propel/components/input";
-import { E_PASSWORD_STRENGTH } from "@plane/constants";
 // types
-import { useTranslation } from "@plane/i18n";
 import { Button } from "@makeplane/propel/elements/button";
 import { setToast } from "@plane/blocks/toast";
 import type { IUser, TUserProfile, TOnboardingSteps } from "@plane/types";
 // ui
-import { PasswordStrengthIndicator } from "@plane/blocks/auth";
 import { Spinner } from "@plane/blocks/spinner";
 // components
-import { cn, getFileURL, getPasswordStrength, validatePersonName } from "@plane/utils";
+import { cn, getFileURL, validatePersonName } from "@plane/utils";
 import { UserImageUploadModal } from "@/components/core/modals/user-image-upload-modal";
 // hooks
 import { useUser, useUserProfile } from "@/hooks/store/user";
-// services
-import { AuthService } from "@/services/auth.service";
 
 type TProfileSetupFormValues = {
   first_name: string;
   last_name: string;
   avatar_url?: string | null;
-  password?: string;
-  confirm_password?: string;
   role?: string;
   use_case?: string[];
 };
@@ -41,8 +33,6 @@ const defaultValues: Partial<TProfileSetupFormValues> = {
   first_name: "",
   last_name: "",
   avatar_url: "",
-  password: undefined,
-  confirm_password: undefined,
   role: undefined,
   use_case: [],
 };
@@ -75,8 +65,6 @@ const USER_DOMAIN = [
   "Other",
 ];
 
-const authService = new AuthService();
-
 export const ProfileSetup = observer(function ProfileSetup(props: Props) {
   const { user, totalSteps, stepChange, finishOnboarding } = props;
   // states
@@ -84,13 +72,6 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
     user?.is_password_autoset ? EProfileSetupSteps.USER_DETAILS : EProfileSetupSteps.ALL
   );
   const [isImageUploadModalOpen, setIsImageUploadModalOpen] = useState(false);
-  const [isPasswordInputFocused, setIsPasswordInputFocused] = useState(false);
-  const [showPassword, setShowPassword] = useState({
-    password: false,
-    retypePassword: false,
-  });
-  // plane hooks
-  const { t } = useTranslation();
   // store hooks
   const { updateCurrentUser } = useUser();
   const { updateUserProfile } = useUserProfile();
@@ -113,14 +94,6 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
   });
   // derived values
   const userAvatar = watch("avatar_url");
-
-  const handleShowPassword = (key: keyof typeof showPassword) =>
-    setShowPassword((prev) => ({ ...prev, [key]: !prev[key] }));
-
-  const handleSetPassword = async (password: string) => {
-    const token = await authService.requestCSRFToken().then((data) => data?.csrf_token);
-    await authService.setPassword(token, { password });
-  };
 
   const handleSubmitProfileSetup = async (formData: TProfileSetupFormValues) => {
     const userDetailsPayload: Partial<IUser> = {
@@ -163,15 +136,8 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
       avatar_url: formData.avatar_url ?? undefined,
     };
     try {
-      await Promise.all([
-        updateCurrentUser(userDetailsPayload),
-        formData.password && handleSetPassword(formData.password),
-      ]).then(() => {
-        if (formData.password) {
-        } else {
-          setProfileSetupStep(EProfileSetupSteps.USER_PERSONALIZATION);
-        }
-      });
+      await updateCurrentUser(userDetailsPayload);
+      setProfileSetupStep(EProfileSetupSteps.USER_PERSONALIZATION);
     } catch {
       setToast({
         type: "error",
@@ -221,30 +187,7 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
     setValue("avatar_url", "");
   };
 
-  // derived values
-  const isPasswordAlreadySetup = !user?.is_password_autoset;
-  const currentPassword = watch("password") || undefined;
-  const currentConfirmPassword = watch("confirm_password") || undefined;
-
-  const isValidPassword = useMemo(() => {
-    if (currentPassword) {
-      if (
-        currentPassword === currentConfirmPassword &&
-        getPasswordStrength(currentPassword) === E_PASSWORD_STRENGTH.STRENGTH_VALID
-      ) {
-        return true;
-      } else {
-        return false;
-      }
-    } else {
-      return true;
-    }
-  }, [currentPassword, currentConfirmPassword]);
-
-  // Check for all available fields validation and if password field is available, then checks for password validation (strength + confirmation).
-  // Also handles the condition for optional password i.e if password field is optional it only checks for above validation if it's not empty.
-  const isButtonDisabled =
-    !isSubmitting && isValid ? (isPasswordAlreadySetup ? false : isValidPassword ? false : true) : true;
+  const isButtonDisabled = isSubmitting || !isValid;
 
   return (
     <div className="flex h-full w-full">
@@ -286,7 +229,6 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                       <img
                         src={getFileURL(userAvatar ?? "")}
                         className="absolute top-0 left-0 h-full w-full rounded-full object-cover"
-                        onClick={() => setIsImageUploadModalOpen(true)}
                         alt={user?.display_name}
                       />
                     </div>
@@ -321,7 +263,6 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                             name="first_name"
                             type="text"
                             value={value}
-                            autoFocus
                             onChange={onChange}
                             ref={ref}
                             placeholder="Wilbur"
@@ -374,100 +315,6 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                   {errors.last_name && <span className="text-13 text-danger-primary">{errors.last_name.message}</span>}
                 </div>
               </div>
-
-              {/* setting up password for the first time */}
-              {!isPasswordAlreadySetup && (
-                <>
-                  <div className="space-y-1">
-                    <label className="text-13 font-medium text-tertiary" htmlFor="password">
-                      Set a password ({t("common.optional")})
-                    </label>
-                    <Controller
-                      control={control}
-                      name="password"
-                      rules={{
-                        required: false,
-                      }}
-                      render={({ field: { value, onChange, ref } }) => (
-                        <Field name="password" invalid={Boolean(errors.password)}>
-                          <InputGroup size="2xl">
-                            <Input
-                              size="2xl"
-                              type={showPassword.password ? "text" : "password"}
-                              name="password"
-                              value={value}
-                              onChange={onChange}
-                              ref={ref}
-                              placeholder="New password..."
-                              onFocus={() => setIsPasswordInputFocused(true)}
-                              onBlur={() => setIsPasswordInputFocused(false)}
-                              autoComplete="new-password"
-                              aria-label="New password..."
-                            />
-                            <button
-                              type="button"
-                              className="grid size-5 place-items-center"
-                              onClick={() => handleShowPassword("password")}
-                            >
-                              {showPassword.password ? (
-                                <HideOutline className="size-4 text-placeholder" />
-                              ) : (
-                                <ShowOutline className="size-4 text-placeholder" />
-                              )}
-                            </button>
-                          </InputGroup>
-                        </Field>
-                      )}
-                    />
-                    <PasswordStrengthIndicator password={watch("password") ?? ""} isFocused={isPasswordInputFocused} />
-                  </div>
-                  <div className="space-y-1">
-                    <label className="text-13 font-medium text-tertiary" htmlFor="confirm_password">
-                      {t("auth.common.password.confirm_password.label")} ({t("common.optional")})
-                    </label>
-                    <Controller
-                      control={control}
-                      name="confirm_password"
-                      rules={{
-                        required: watch("password") ? true : false,
-                        validate: (value) =>
-                          watch("password") ? (value === watch("password") ? true : "Passwords don't match") : true,
-                      }}
-                      render={({ field: { value, onChange, ref } }) => (
-                        <Field name="confirm_password" invalid={Boolean(errors.confirm_password)}>
-                          <InputGroup size="2xl">
-                            <Input
-                              size="2xl"
-                              type={showPassword.retypePassword ? "text" : "password"}
-                              name="confirm_password"
-                              value={value}
-                              onChange={onChange}
-                              ref={ref}
-                              placeholder={t("auth.common.password.confirm_password.placeholder")}
-                              autoComplete="new-password"
-                              aria-label={t("auth.common.password.confirm_password.placeholder")}
-                            />
-                            <button
-                              type="button"
-                              className="grid size-5 place-items-center"
-                              onClick={() => handleShowPassword("retypePassword")}
-                            >
-                              {showPassword.retypePassword ? (
-                                <HideOutline className="size-4 text-placeholder" />
-                              ) : (
-                                <ShowOutline className="size-4 text-placeholder" />
-                              )}
-                            </button>
-                          </InputGroup>
-                        </Field>
-                      )}
-                    />
-                    {errors.confirm_password && (
-                      <span className="text-13 text-danger-primary">{errors.confirm_password.message}</span>
-                    )}
-                  </div>
-                </>
-              )}
             </>
           )}
 
@@ -490,7 +337,8 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                   render={({ field: { value, onChange } }) => (
                     <div className="flex flex-wrap gap-2 overflow-auto py-2 break-all">
                       {USER_ROLE.map((userRole) => (
-                        <div
+                        <button
+                          type="button"
                           key={userRole}
                           className={cn(
                             "shrink-0 rounded border-[0.5px] px-3 py-1.5 text-13 font-medium hover:cursor-pointer hover:bg-surface-2",
@@ -502,7 +350,7 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                           onClick={() => onChange(userRole)}
                         >
                           {userRole}
-                        </div>
+                        </button>
                       ))}
                     </div>
                   )}
@@ -528,7 +376,8 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                       {USER_DOMAIN.map((userDomain) => {
                         const isSelected = value?.includes(userDomain) || false;
                         return (
-                          <div
+                          <button
+                            type="button"
                             key={userDomain}
                             className={`flex-shrink-0 border-[0.5px] hover:cursor-pointer hover:bg-surface-2 ${
                               isSelected ? "border-accent-strong" : "border-strong"
@@ -543,7 +392,7 @@ export const ProfileSetup = observer(function ProfileSetup(props: Props) {
                             }}
                           >
                             {userDomain}
-                          </div>
+                          </button>
                         );
                       })}
                     </div>

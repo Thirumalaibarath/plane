@@ -7,9 +7,20 @@
 import { useState, useMemo, useEffect } from "react";
 import { observer } from "mobx-react";
 import useSWR from "swr";
-import { ShieldCheck, UserCheck, Search, Plus, X, Users, RefreshCw, CheckCircle2 } from "lucide-react";
+import {
+  ShieldCheck,
+  UserCheck,
+  UserX,
+  UserPlus,
+  Trash2,
+  Search,
+  Plus,
+  X,
+  Users,
+  RefreshCw,
+  CheckCircle2,
+} from "lucide-react";
 // propel components
-import { Button } from "@makeplane/propel/components/button";
 import { Switch } from "@makeplane/propel/components/switch";
 import { setPromiseToast, setToast } from "@plane/blocks/toast";
 // components
@@ -76,6 +87,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
   const [newMemberInput, setNewMemberInput] = useState<string>("");
   const [allowedUsersList, setAllowedUsersList] = useState<string[]>([]);
   const [isListInitialized, setIsListInitialized] = useState<boolean>(false);
+  const [actionInProgressId, setActionInProgressId] = useState<string | null>(null);
 
   // current config values
   const isAllowlistEnforced = formattedConfig?.DAUTH_ENFORCE_ALLOWLIST === "1";
@@ -115,33 +127,44 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
 
     try {
       await promise;
+      await fetchInstanceConfigurations();
     } finally {
       setIsSubmitting(false);
     }
   };
 
   // add entry to allowlist
-  const handleAddMember = () => {
-    if (!newMemberInput.trim()) return;
-    const tokens = newMemberInput
+  const handleAddMember = (customToken?: string) => {
+    const textToAdd = (customToken ?? newMemberInput).trim();
+    if (!textToAdd) return;
+    const tokens = textToAdd
       .split(/[\s,\n;]+/)
       .map((t) => t.trim().toLowerCase())
       .filter(Boolean);
 
     const merged = Array.from(new Set([...allowedUsersList.map((x) => x.toLowerCase()), ...tokens]));
     setAllowedUsersList(merged);
-    setNewMemberInput("");
+    if (!customToken) {
+      setNewMemberInput("");
+    }
+    setToast({
+      type: "success",
+      title: "Added to draft",
+      message: `Added to draft list. Remember to click "Save Allowlist" to persist.`,
+    });
   };
 
   // remove entry from allowlist
   const handleRemoveMember = (target: string) => {
-    setAllowedUsersList(allowedUsersList.filter((item) => item.toLowerCase() !== target.toLowerCase()));
+    const targetLower = target.toLowerCase();
+    setAllowedUsersList(allowedUsersList.filter((item) => item.toLowerCase() !== targetLower));
   };
 
   // save allowlist to server
-  const handleSaveAllowlist = async () => {
+  const handleSaveAllowlist = async (overrideList?: string[]) => {
     setIsSubmitting(true);
-    const serialized = allowedUsersList.join(", ");
+    const listToSave = overrideList ?? allowedUsersList;
+    const serialized = listToSave.join(", ");
     const promise = updateInstanceConfigurations({
       DAUTH_ALLOWED_USERS: serialized,
       DAUTH_ENFORCE_ALLOWLIST: isAllowlistEnforced ? "1" : "0",
@@ -151,7 +174,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
       loading: "Saving allowlist...",
       success: {
         title: "Allowlist saved",
-        message: () => `${allowedUsersList.length} members are allowed to sign in via DAuth.`,
+        message: () => `${listToSave.length} member(s) are allowed to sign in via DAuth.`,
       },
       error: {
         title: "Error",
@@ -161,6 +184,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
 
     try {
       await promise;
+      await fetchInstanceConfigurations();
     } finally {
       setIsSubmitting(false);
     }
@@ -175,8 +199,76 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
     setToast({
       type: "info",
       title: "Users added to draft",
-      message: `${currentEmails.length} registered user email(s) added. Click 'Save Allowlist' to persist.`,
+      message: `${currentEmails.length} registered user email(s) added. Click 'Save Allowlist' to save.`,
     });
+  };
+
+  // toggle user active status (deactivate / activate)
+  const handleToggleUserActive = async (user: IInstanceUser) => {
+    setActionInProgressId(user.id);
+    const newActive = !user.is_active;
+    try {
+      const res = await fetch(`/api/instances/users/${user.id}/`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        credentials: "include",
+        body: JSON.stringify({ is_active: newActive }),
+      });
+      if (!res.ok) throw new Error("Failed to update user status");
+      await mutateUsers();
+      setToast({
+        type: "success",
+        title: "Status updated",
+        message: `Account for ${user.email} is now ${newActive ? "active" : "deactivated"}.`,
+      });
+    } catch {
+      setToast({
+        type: "error",
+        title: "Error",
+        message: "Failed to update user active status.",
+      });
+    } finally {
+      setActionInProgressId(null);
+    }
+  };
+
+  // delete user account
+  const handleDeleteUser = async (user: IInstanceUser) => {
+    if (
+      !window.confirm(
+        `Are you sure you want to permanently delete the account for "${user.email}"? This action cannot be undone.`
+      )
+    ) {
+      return;
+    }
+    setActionInProgressId(user.id);
+    try {
+      const res = await fetch(`/api/instances/users/${user.id}/`, {
+        method: "DELETE",
+        credentials: "include",
+      });
+      if (!res.ok) {
+        const data = await res.json().catch(() => ({}));
+        throw new Error(data.error || "Failed to delete user");
+      }
+      await mutateUsers();
+      // Also remove from allowlist if present
+      const userEmail = user.email.toLowerCase();
+      handleRemoveMember(userEmail);
+      setToast({
+        type: "success",
+        title: "User deleted",
+        message: `Account for ${user.email} has been permanently removed.`,
+      });
+    } catch (err: any) {
+      setToast({
+        type: "error",
+        title: "Error",
+        message: err?.message || "Failed to delete user account.",
+      });
+    } finally {
+      setActionInProgressId(null);
+    }
   };
 
   // filter registered users by search
@@ -259,19 +351,24 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
                 </p>
               </div>
               <div className="flex items-center gap-2">
-                <Button
-                  variant="outline-neutral"
-                  size="sm"
+                <button
+                  type="button"
                   onClick={handleSeedRegisteredUsers}
                   disabled={!users || users.length === 0}
+                  className="shadow-xs inline-flex items-center gap-1.5 rounded-md border border-subtle bg-surface-2 px-3 py-1.5 text-12 font-medium text-primary transition-colors hover:bg-surface-1 focus:outline-none disabled:opacity-50"
                 >
-                  <Plus className="mr-1.5 size-3.5" />
+                  <Plus className="size-3.5" />
                   Add All Active Users
-                </Button>
-                <Button variant="primary" size="sm" onClick={handleSaveAllowlist} loading={isSubmitting}>
-                  <CheckCircle2 className="mr-1.5 size-3.5" />
+                </button>
+                <button
+                  type="button"
+                  onClick={() => handleSaveAllowlist()}
+                  disabled={isSubmitting}
+                  className="bg-emerald-600 shadow-sm hover:bg-emerald-500 inline-flex items-center gap-1.5 rounded-md px-3.5 py-1.5 text-12 font-medium text-white transition-colors focus:outline-none disabled:opacity-50"
+                >
+                  <CheckCircle2 className="size-3.5" />
                   Save Allowlist
-                </Button>
+                </button>
               </div>
             </div>
 
@@ -279,7 +376,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
             <div className="mt-3 flex gap-2">
               <input
                 type="text"
-                placeholder="Enter roll numbers or emails (comma or space separated)..."
+                placeholder="Enter roll numbers or emails (comma, space, or newline separated)..."
                 value={newMemberInput}
                 onChange={(e) => setNewMemberInput(e.target.value)}
                 onKeyDown={(e) => {
@@ -290,9 +387,14 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
                 }}
                 className="focus:border-primary flex-1 rounded-md border border-subtle bg-surface-2 px-3 py-1.5 text-13 text-primary placeholder:text-tertiary focus:outline-none"
               />
-              <Button variant="outline-neutral" size="sm" onClick={handleAddMember}>
+              <button
+                type="button"
+                onClick={() => handleAddMember()}
+                className="shadow-sm inline-flex items-center gap-1.5 rounded-md bg-accent-primary px-3.5 py-1.5 text-12 font-medium text-on-color transition-colors hover:opacity-90 focus:outline-none"
+              >
+                <Plus className="size-3.5" />
                 Add to List
-              </Button>
+              </button>
             </div>
 
             {/* Chips List */}
@@ -312,6 +414,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
                       type="button"
                       onClick={() => handleRemoveMember(item)}
                       className="hover:text-danger rounded-full p-0.5 text-tertiary hover:bg-surface-2 focus:outline-none"
+                      title="Remove member"
                     >
                       <X className="size-3" />
                     </button>
@@ -348,9 +451,15 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
                   className="focus:border-primary w-56 rounded-md border border-subtle bg-surface-2 py-1 pr-3 pl-8 text-12 text-primary placeholder:text-tertiary focus:outline-none"
                 />
               </div>
-              <Button variant="outline-neutral" size="sm" onClick={() => mutateUsers()} disabled={isUsersLoading}>
+              <button
+                type="button"
+                onClick={() => mutateUsers()}
+                disabled={isUsersLoading}
+                className="flex size-7 items-center justify-center rounded-md border border-subtle bg-surface-2 text-secondary transition-colors hover:bg-surface-1 hover:text-primary focus:outline-none"
+                title="Refresh list"
+              >
                 <RefreshCw className={`size-3.5 ${isUsersLoading ? "animate-spin" : ""}`} />
-              </Button>
+              </button>
             </div>
           </div>
 
@@ -373,10 +482,12 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
             <div className="divide-y divide-subtle">
               {filteredUsers.map((user) => {
                 const whitelisted = isUserWhitelisted(user);
+                const isWorking = actionInProgressId === user.id;
+
                 return (
                   <div
                     key={user.id}
-                    className="flex flex-col gap-2 py-3.5 sm:flex-row sm:items-center sm:justify-between"
+                    className="flex flex-col gap-3 py-3.5 sm:flex-row sm:items-center sm:justify-between"
                   >
                     <div className="flex items-center gap-3">
                       <div className="bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 flex size-9 items-center justify-center rounded-full text-13 font-semibold">
@@ -413,12 +524,72 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
                       </div>
                     </div>
 
-                    <div className="flex items-center gap-4 text-12 text-secondary">
+                    {/* Actions Row */}
+                    <div className="flex items-center gap-2 text-12">
                       {user.workspaces && user.workspaces.length > 0 && (
-                        <span className="rounded-md bg-surface-2 px-2 py-1 text-11 text-tertiary">
+                        <span className="mr-1 hidden rounded-md bg-surface-2 px-2 py-1 text-11 text-tertiary sm:inline-block">
                           {user.workspaces.length} workspace{user.workspaces.length > 1 ? "s" : ""}
                         </span>
                       )}
+
+                      {/* Quick Whitelist Button */}
+                      {!user.is_superuser &&
+                        (!whitelisted ? (
+                          <button
+                            type="button"
+                            onClick={() => {
+                              handleAddMember(user.email);
+                            }}
+                            className="inline-flex items-center gap-1 rounded-md border border-subtle bg-surface-2 px-2 py-1 text-11 font-medium text-primary transition-colors hover:bg-surface-1 focus:outline-none"
+                            title="Add user's email to allowlist"
+                          >
+                            <UserPlus className="size-3" />
+                            Allowlist
+                          </button>
+                        ) : (
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveMember(user.email)}
+                            className="hover:text-danger inline-flex items-center gap-1 rounded-md border border-subtle bg-surface-2 px-2 py-1 text-11 font-medium text-tertiary transition-colors focus:outline-none"
+                            title="Remove user's email from allowlist"
+                          >
+                            <X className="size-3" />
+                            Remove
+                          </button>
+                        ))}
+
+                      {/* Deactivate / Activate Button */}
+                      {!user.is_superuser && (
+                        <button
+                          type="button"
+                          onClick={() => handleToggleUserActive(user)}
+                          disabled={isWorking}
+                          className={`inline-flex items-center gap-1 rounded-md px-2 py-1 text-11 font-medium transition-colors focus:outline-none ${
+                            user.is_active
+                              ? "border-amber-500/20 bg-amber-500/10 text-amber-600 hover:bg-amber-500/20 dark:text-amber-400 border"
+                              : "border-emerald-500/20 bg-emerald-500/10 text-emerald-600 hover:bg-emerald-500/20 dark:text-emerald-400 border"
+                          }`}
+                        >
+                          {user.is_active ? <UserX className="size-3" /> : <UserCheck className="size-3" />}
+                          {user.is_active ? "Deactivate" : "Activate"}
+                        </button>
+                      )}
+
+                      {/* Delete Account Button */}
+                      {!user.is_superuser && (
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteUser(user)}
+                          disabled={isWorking}
+                          className="border-danger/20 bg-danger/10 text-danger hover:bg-danger/20 inline-flex items-center gap-1 rounded-md border px-2 py-1 text-11 font-medium transition-colors focus:outline-none"
+                          title="Permanently delete user account"
+                        >
+                          <Trash2 className="size-3" />
+                          Delete
+                        </button>
+                      )}
+
+                      {/* Status indicator badge */}
                       <span
                         className={`inline-flex items-center gap-1.5 rounded-full px-2 py-0.5 text-11 font-medium ${
                           user.is_active
