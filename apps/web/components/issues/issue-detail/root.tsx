@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  * See the LICENSE file for details.
  */
-
+/* eslint-disable no-shadow */
 import { useMemo } from "react";
 import { observer } from "mobx-react";
 // plane imports
@@ -219,7 +219,7 @@ export const IssueDetailRoot = observer(function IssueDetailRoot(props: TIssueDe
   const issue = getIssueById(issueId);
   // checking if issue is editable, based on user role
   const isEditable = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.DEVELOPER],
     EUserPermissionsLevel.PROJECT,
     workspaceSlug,
     projectId

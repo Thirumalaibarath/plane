@@ -540,6 +540,26 @@ class IssueListCreateAPIEndpoint(BaseAPIView):
         Supports external ID tracking for integration purposes.
         """
         project = Project.objects.get(pk=project_id)
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        caller_is_admin_or_lead = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
+            ).exists()
+            or (project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+        if caller_pm and caller_pm.role == 10 and not caller_is_admin_or_lead:
+            return Response(
+                {
+                    "error": "Developers cannot create work items. Work items can only be created by a Manager or Admin."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = IssueSerializer(
             data=request.data,

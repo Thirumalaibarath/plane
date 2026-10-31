@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: AGPL-3.0-only
  * See the LICENSE file for details.
  */
-
+/* eslint-disable no-shadow */
 import { useState, useMemo, useCallback } from "react";
 import { observer } from "mobx-react";
 import { usePathname } from "next/navigation";
@@ -229,7 +229,7 @@ export const IssuePeekOverview = observer(function IssuePeekOverview(props: IWor
 
   // Check if issue is editable, based on user role
   const isEditable = allowPermissions(
-    [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
+    [EUserPermissions.ADMIN, EUserPermissions.MEMBER, EUserPermissions.DEVELOPER],
     EUserPermissionsLevel.PROJECT,
     peekIssue?.workspaceSlug,
     peekIssue?.projectId

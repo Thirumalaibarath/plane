@@ -57,7 +57,7 @@ def can_write_project(user, slug, project_id):
     if role is None:
         return False
     return (
-        role in (ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.DEVELOPER.value)
+        role in (ROLE.ADMIN.value, ROLE.MEMBER.value)
         or WorkspaceMember.objects.filter(
             member=user, workspace__slug=slug, role=ROLE.ADMIN.value, is_active=True
         ).exists()

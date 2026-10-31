@@ -222,12 +222,7 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
     }
 
     const effectiveRoles = [...allowPermissions];
-    if (
-      effectiveRoles.includes(EUserPermissions.GUEST) ||
-      effectiveRoles.includes(EUserPermissions.MEMBER) ||
-      effectiveRoles.includes(5) ||
-      effectiveRoles.includes(15)
-    ) {
+    if (effectiveRoles.includes(EUserPermissions.GUEST) || effectiveRoles.includes(5)) {
       if (!effectiveRoles.includes(EUserPermissions.DEVELOPER)) {
         effectiveRoles.push(EUserPermissions.DEVELOPER);
       }

@@ -388,31 +388,27 @@ class IssueViewSet(BaseViewSet):
     def create(self, request, slug, project_id):
         project = Project.objects.get(pk=project_id)
 
-        # Developer check on creation: cannot create in completed/cancelled states
+        # Developer check on creation: Developers cannot create work items. Creation is restricted to Managers and Admins.
         caller_pm = ProjectMember.objects.filter(
             workspace__slug=slug,
             project_id=project_id,
             member=request.user,
             is_active=True,
         ).first()
-        caller_is_admin = (
+        caller_is_admin_or_lead = (
             (caller_pm and caller_pm.role == 20)
             or WorkspaceMember.objects.filter(
                 workspace__slug=slug, member=request.user, role=20, is_active=True
             ).exists()
             or (project.project_lead_id and project.project_lead_id == request.user.id)
         )
-        if caller_pm and caller_pm.role == 10 and not caller_is_admin:
-            target_state_id = request.data.get("state") or request.data.get("state_id")
-            if target_state_id:
-                target_state = State.objects.filter(pk=target_state_id, project_id=project_id).first()
-                if target_state and target_state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
-                    return Response(
-                        {
-                            "error": "Developers cannot mark work items as completed or cancelled. Completion must be done by a Manager."
-                        },
-                        status=status.HTTP_403_FORBIDDEN,
-                    )
+        if caller_pm and caller_pm.role == 10 and not caller_is_admin_or_lead:
+            return Response(
+                {
+                    "error": "Developers cannot create work items. Work items can only be created by a Manager or Admin."
+                },
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         serializer = IssueCreateSerializer(
             data=request.data,
