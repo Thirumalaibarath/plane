@@ -328,6 +328,27 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
             project.cover_image_asset_id = asset_id
             project.save()
             return
+        # Project Logo
+        elif entity_type == FileAsset.EntityTypeContext.PROJECT_LOGO:
+            project = Project.objects.filter(id=asset.project_id).first()
+            if project is None:
+                return
+            old_asset_id = (
+                project.logo_props.get("image", {}).get("asset_id")
+                if isinstance(project.logo_props, dict)
+                else None
+            )
+            if old_asset_id and str(old_asset_id) != str(asset_id):
+                self.asset_delete(old_asset_id)
+            project.logo_props = {
+                "in_use": "image",
+                "image": {
+                    "url": asset.asset_url,
+                    "asset_id": str(asset_id),
+                },
+            }
+            project.save(update_fields=["logo_props"])
+            return
         else:
             return
 
@@ -355,6 +376,20 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
                 return
             project.cover_image_asset_id = None
             project.save()
+            return
+        # Project Logo
+        elif entity_type == FileAsset.EntityTypeContext.PROJECT_LOGO:
+            project = Project.objects.filter(id=asset.project_id).first()
+            if project is None:
+                return
+            project.logo_props = {
+                "in_use": "icon",
+                "icon": {
+                    "name": "folder",
+                    "color": "#000000",
+                },
+            }
+            project.save(update_fields=["logo_props"])
             return
         else:
             return

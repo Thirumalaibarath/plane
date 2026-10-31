@@ -224,7 +224,7 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                   buttonClassName="flex h-[52px] w-[52px] flex-shrink-0 items-center justify-center rounded-lg bg-white/10"
                   label={<Logo logo={value} size={28} />}
                   // TODO: fix types
-                  onChange={(val: any) => {
+                  onChange={async (val: any) => {
                     let logoValue = {};
 
                     if (val?.type === "emoji")
@@ -234,11 +234,18 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                     else if (val?.type === "icon") logoValue = val.value;
                     else if (val?.type === "image") logoValue = val.value;
 
-                    onChange({
+                    const newLogoProps = {
                       in_use: val?.type,
                       [val?.type]: logoValue,
-                    });
+                    };
+                    setValue("logo_props", newLogoProps, { shouldDirty: true });
+                    onChange(newLogoProps);
                     setIsOpen(false);
+                    if (workspaceSlug && project?.id) {
+                      await updateProject(workspaceSlug.toString(), project.id, {
+                        logo_props: newLogoProps,
+                      });
+                    }
                   }}
                   defaultIconColor={value?.in_use && value.in_use === "icon" ? value?.icon?.color : undefined}
                   defaultOpen={value?.in_use === "image" ? "upload" : value?.in_use === "emoji" ? "emoji" : "icon"}
@@ -252,22 +259,36 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                           workspaceSlug={workspaceSlug.toString()}
                           projectId={project.id}
                           logoProps={value}
-                          onChange={(imageProps) => {
-                            onChange({
-                              in_use: "image",
+                          onChange={async (imageProps) => {
+                            const newLogoProps = {
+                              in_use: "image" as const,
                               image: imageProps,
-                            });
+                            };
+                            setValue("logo_props", newLogoProps, { shouldDirty: true });
+                            onChange(newLogoProps);
                             setIsOpen(false);
+                            if (workspaceSlug && project?.id) {
+                              await updateProject(workspaceSlug.toString(), project.id, {
+                                logo_props: newLogoProps,
+                              });
+                            }
                           }}
-                          onRemove={() => {
-                            onChange({
-                              in_use: "icon",
+                          onRemove={async () => {
+                            const newLogoProps = {
+                              in_use: "icon" as const,
                               icon: {
                                 name: "folder",
                                 color: "#000000",
                               },
-                            });
+                            };
+                            setValue("logo_props", newLogoProps, { shouldDirty: true });
+                            onChange(newLogoProps);
                             setIsOpen(false);
+                            if (workspaceSlug && project?.id) {
+                              await updateProject(workspaceSlug.toString(), project.id, {
+                                logo_props: newLogoProps,
+                              });
+                            }
                           }}
                           disabled={!isAdmin}
                         />
