@@ -219,7 +219,14 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
       currentUserRole = parseInt(currentUserRole);
     }
 
-    if (currentUserRole && typeof currentUserRole === "number" && allowPermissions.includes(currentUserRole)) {
+    const effectiveRoles = [...allowPermissions];
+    if (effectiveRoles.includes(EUserPermissions.GUEST) || effectiveRoles.includes(EUserPermissions.MEMBER)) {
+      if (!effectiveRoles.includes(EUserPermissions.DEVELOPER)) {
+        effectiveRoles.push(EUserPermissions.DEVELOPER);
+      }
+    }
+
+    if (currentUserRole && typeof currentUserRole === "number" && effectiveRoles.includes(currentUserRole)) {
       if (onPermissionAllowed) {
         return onPermissionAllowed();
       } else {

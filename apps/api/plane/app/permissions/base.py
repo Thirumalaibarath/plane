@@ -56,9 +56,15 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
             # Convert allowed_roles to their values if they are enum members
             allowed_role_values = [role.value if isinstance(role, ROLE) else role for role in allowed_roles]
-            # If GUEST is allowed, DEVELOPER is also allowed
-            if (ROLE.GUEST.value in allowed_role_values or ROLE.GUEST in allowed_roles) and (
+            # If GUEST is allowed or if MEMBER is allowed, DEVELOPER is also allowed
+            if (
+                ROLE.GUEST.value in allowed_role_values
+                or ROLE.GUEST in allowed_roles
+                or ROLE.MEMBER.value in allowed_role_values
+                or ROLE.MEMBER in allowed_roles
+            ) and (
                 ROLE.DEVELOPER.value not in allowed_role_values
+                and ROLE.DEVELOPER not in allowed_roles
             ):
                 allowed_role_values.append(ROLE.DEVELOPER.value)
 
