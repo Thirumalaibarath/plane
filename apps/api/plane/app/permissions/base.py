@@ -13,6 +13,8 @@ from enum import Enum
 class ROLE(Enum):
     ADMIN = 20
     MEMBER = 15
+    MANAGER = 15
+    DEVELOPER = 10
     GUEST = 5
 
 
@@ -54,6 +56,11 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
             # Convert allowed_roles to their values if they are enum members
             allowed_role_values = [role.value if isinstance(role, ROLE) else role for role in allowed_roles]
+            # If GUEST is allowed, DEVELOPER is also allowed
+            if (ROLE.GUEST.value in allowed_role_values or ROLE.GUEST in allowed_roles) and (
+                ROLE.DEVELOPER.value not in allowed_role_values
+            ):
+                allowed_role_values.append(ROLE.DEVELOPER.value)
 
             # Check role permissions
             if level == "WORKSPACE":
@@ -104,38 +111,5 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
 
 def issue_hidden_from_guest(request, slug, project_id, issue_id):
-    """Return True when the caller is a *restricted* project guest who must not
-    see the given issue's data or sub-resources.
-
-    A project member with role GUEST on a project whose
-    ``guest_view_all_features`` is disabled may only see issues they created,
-    the same rule issue detail applies. Issue sub-resource endpoints
-    (attachments, activity, comments, reactions, versions, relations) apply it
-    through this helper.
-
-    Ownership is checked with ``Issue.objects`` (like issue detail), so the
-    guest's own archived, draft and triage issues stay visible.
-
-    Returns False for admins, members, unrestricted guests, and for the guest's
-    own issues. Callers should translate a True result into a 403.
-    """
-    from plane.db.models import Issue
-
-    is_restricted_guest = ProjectMember.objects.filter(
-        workspace__slug=slug,
-        project_id=project_id,
-        member=request.user,
-        role=ROLE.GUEST.value,
-        is_active=True,
-        project__guest_view_all_features=False,
-    ).exists()
-    if not is_restricted_guest:
-        return False
-
-    owns_issue = Issue.objects.filter(
-        pk=issue_id,
-        workspace__slug=slug,
-        project_id=project_id,
-        created_by=request.user,
-    ).exists()
-    return not owns_issue
+    """Return False: Guests have view access to all project issues in Delta Force Plane."""
+    return False

@@ -80,6 +80,8 @@ from plane.db.models import (
     CycleIssue,
     Workspace,
     WorkspaceMember,
+    State,
+    StateGroup,
 )
 from plane.settings.storage import S3Storage
 from plane.utils.path_validator import sanitize_filename
@@ -845,6 +847,55 @@ class IssueDetailAPIEndpoint(BaseAPIView):
         """
         issue = Issue.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
         project = Project.objects.get(pk=project_id)
+
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        is_caller_admin_or_lead = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
+            ).exists()
+            or (project and project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+
+        # 1. Rule: Work assigned to a Manager can ONLY be changed by that Project Admin / Project Lead
+        has_manager_assignee = ProjectMember.objects.filter(
+            project_id=project_id,
+            member_id__in=issue.assignees.values_list("id", flat=True),
+            role=15,
+            is_active=True,
+        ).exists()
+
+        if has_manager_assignee and not is_caller_admin_or_lead:
+            return Response(
+                {"error": "Work assigned to a Manager can only be modified by the Project Admin or Project Lead."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 2. Rule: Developers can only move the block till done reviewing.
+        # Completion can only be done by a Manager or Project Admin/Lead.
+        is_developer = (caller_pm and caller_pm.role == 10) and not is_caller_admin_or_lead
+        if is_developer:
+            if issue.state and issue.state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
+                return Response(
+                    {"error": "Developers cannot modify completed work items."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            new_state_id = request.data.get("state") or request.data.get("state_id")
+            if new_state_id and str(new_state_id) != str(issue.state_id):
+                target_state = State.objects.filter(pk=new_state_id, project_id=project_id).first()
+                if target_state and target_state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
+                    return Response(
+                        {
+                            "error": "Developers cannot mark work items as completed or cancelled. Completion must be done by a Manager."
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
         current_instance = json.dumps(IssueSerializer(issue).data, cls=DjangoJSONEncoder)
         serializer = IssueSerializer(
             issue,

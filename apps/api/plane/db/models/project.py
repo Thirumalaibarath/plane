@@ -18,12 +18,14 @@ from plane.db.mixins import AuditModel, ChangeTrackerMixin
 
 from .base import BaseModel
 
-ROLE_CHOICES = ((20, "Admin"), (15, "Member"), (5, "Guest"))
+ROLE_CHOICES = ((20, "Admin"), (15, "Manager"), (10, "Developer"), (5, "Guest"))
 
 
 class ROLE(Enum):
     ADMIN = 20
     MEMBER = 15
+    MANAGER = 15
+    DEVELOPER = 10
     GUEST = 5
 
 
@@ -99,7 +101,7 @@ class Project(ChangeTrackerMixin, BaseModel):
     intake_view = models.BooleanField(default=False)
     is_time_tracking_enabled = models.BooleanField(default=False)
     is_issue_type_enabled = models.BooleanField(default=False)
-    guest_view_all_features = models.BooleanField(default=False)
+    guest_view_all_features = models.BooleanField(default=True)
     cover_image = models.TextField(blank=True, null=True)
     cover_image_asset = models.ForeignKey(
         "db.FileAsset",

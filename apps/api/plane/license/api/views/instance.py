@@ -158,6 +158,14 @@ class InstanceEndpoint(BaseAPIView):
         data["instance_changelog_url"] = settings.INSTANCE_CHANGELOG_URL
         data["is_self_managed"] = settings.IS_SELF_MANAGED
 
+        # Discord community URL
+        discord_config = InstanceConfiguration.objects.filter(key="DISCORD_URL").first()
+        data["discord_url"] = (
+            discord_config.value
+            if discord_config and discord_config.value
+            else os.environ.get("DISCORD_URL", "")
+        )
+
         instance_data = serializer.data
         instance_data["workspaces_exist"] = Workspace.objects.count() >= 1
 

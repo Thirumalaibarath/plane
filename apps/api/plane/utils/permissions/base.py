@@ -13,6 +13,8 @@ from enum import Enum
 class ROLE(Enum):
     ADMIN = 20
     MEMBER = 15
+    MANAGER = 15
+    DEVELOPER = 10
     GUEST = 5
 
 
@@ -54,6 +56,11 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
             # Convert allowed_roles to their values if they are enum members
             allowed_role_values = [role.value if isinstance(role, ROLE) else role for role in allowed_roles]
+            # If GUEST is allowed, DEVELOPER is also allowed
+            if (ROLE.GUEST.value in allowed_role_values or ROLE.GUEST in allowed_roles) and (
+                ROLE.DEVELOPER.value not in allowed_role_values
+            ):
+                allowed_role_values.append(ROLE.DEVELOPER.value)
 
             # Check role permissions
             if level == "WORKSPACE":

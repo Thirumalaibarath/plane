@@ -13,6 +13,7 @@ import type { IWorkspace } from "../workspace";
 export enum EUserProjectRoles {
   ADMIN = 20,
   MEMBER = 15,
+  DEVELOPER = 10,
   GUEST = 5,
 }
 

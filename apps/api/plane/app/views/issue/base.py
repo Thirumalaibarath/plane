@@ -59,7 +59,10 @@ from plane.db.models import (
     ModuleIssue,
     Project,
     ProjectMember,
+    State,
+    StateGroup,
     UserRecentVisit,
+    WorkspaceMember,
 )
 from plane.utils.filters import ComplexFilterBackend, IssueFilterSet
 from plane.utils.global_paginator import paginate
@@ -94,17 +97,7 @@ class IssueListEndpoint(BaseAPIView):
         # Base queryset with basic filters
         queryset = Issue.issue_objects.filter(workspace__slug=slug, project_id=project_id, pk__in=issue_ids)
 
-        # Restrict guests without full feature access to issues they created,
-        # mirroring IssueViewSet.list.
-        if ProjectMember.objects.filter(
-            workspace__slug=slug,
-            project_id=project_id,
-            member=request.user,
-            role=ROLE.GUEST.value,
-            is_active=True,
-            project__guest_view_all_features=False,
-        ).exists():
-            queryset = queryset.filter(created_by=request.user)
+        # Guests have view access to all project work items
 
         # Apply filtering from filterset
         queryset = self.filter_queryset(queryset)
@@ -308,18 +301,7 @@ class IssueViewSet(BaseViewSet):
             entity_identifier=project_id,
             user_id=request.user.id,
         )
-        if (
-            ProjectMember.objects.filter(
-                workspace__slug=slug,
-                project_id=project_id,
-                member=request.user,
-                role=5,
-                is_active=True,
-            ).exists()
-            and not project.guest_view_all_features
-        ):
-            issue_queryset = issue_queryset.filter(created_by=request.user)
-            filtered_issue_queryset = filtered_issue_queryset.filter(created_by=request.user)
+        # Guests have view access to all project work items
 
         if group_by:
             if sub_group_by:
@@ -402,9 +384,35 @@ class IssueViewSet(BaseViewSet):
                 on_results=lambda issues: issue_on_results(group_by=group_by, issues=issues, sub_group_by=sub_group_by),
             )
 
-    @allow_permission([ROLE.ADMIN, ROLE.MEMBER])
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER, ROLE.DEVELOPER])
     def create(self, request, slug, project_id):
         project = Project.objects.get(pk=project_id)
+
+        # Developer check on creation: cannot create in completed/cancelled states
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        caller_is_admin = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
+            ).exists()
+            or (project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+        if caller_pm and caller_pm.role == 10 and not caller_is_admin:
+            target_state_id = request.data.get("state") or request.data.get("state_id")
+            if target_state_id:
+                target_state = State.objects.filter(pk=target_state_id, project_id=project_id).first()
+                if target_state and target_state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
+                    return Response(
+                        {
+                            "error": "Developers cannot mark work items as completed or cancelled. Completion must be done by a Manager."
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
 
         serializer = IssueCreateSerializer(
             data=request.data,
@@ -598,21 +606,7 @@ class IssueViewSet(BaseViewSet):
         the requesting user then dont show the issue
         """
 
-        if (
-            ProjectMember.objects.filter(
-                workspace__slug=slug,
-                project_id=project_id,
-                member=request.user,
-                role=5,
-                is_active=True,
-            ).exists()
-            and not project.guest_view_all_features
-            and not issue.created_by == request.user
-        ):
-            return Response(
-                {"error": "You are not allowed to view this issue"},
-                status=status.HTTP_403_FORBIDDEN,
-            )
+        # Guests have view access to all project work items
 
         recent_visited_task.delay(
             slug=slug,
@@ -625,7 +619,7 @@ class IssueViewSet(BaseViewSet):
         serializer = IssueDetailSerializer(issue, expand=self.expand)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
-    @allow_permission(allowed_roles=[ROLE.ADMIN, ROLE.MEMBER], creator=True, model=Issue)
+    @allow_permission(allowed_roles=[ROLE.ADMIN, ROLE.MEMBER, ROLE.DEVELOPER], creator=True, model=Issue)
     def partial_update(self, request, slug, project_id, pk=None):
         queryset = self.get_queryset()
         queryset = self.apply_annotations(queryset)
@@ -675,6 +669,55 @@ class IssueViewSet(BaseViewSet):
         if not issue:
             return Response({"error": "Issue not found"}, status=status.HTTP_404_NOT_FOUND)
 
+        project = Project.objects.filter(pk=project_id, workspace__slug=slug).first()
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        is_caller_admin_or_lead = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
+            ).exists()
+            or (project and project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+
+        # 1. Rule: Work assigned to a Manager can ONLY be changed by that Project Admin / Project Lead
+        has_manager_assignee = ProjectMember.objects.filter(
+            project_id=project_id,
+            member_id__in=issue.assignee_ids,
+            role=15,
+            is_active=True,
+        ).exists()
+
+        if has_manager_assignee and not is_caller_admin_or_lead:
+            return Response(
+                {"error": "Work assigned to a Manager can only be modified by the Project Admin or Project Lead."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
+
+        # 2. Rule: Developers can only move the block till done reviewing.
+        # Completion can only be done by a Manager or Project Admin/Lead.
+        is_developer = (caller_pm and caller_pm.role == 10) and not is_caller_admin_or_lead
+        if is_developer:
+            if issue.state and issue.state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
+                return Response(
+                    {"error": "Developers cannot modify completed work items."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            new_state_id = request.data.get("state") or request.data.get("state_id")
+            if new_state_id and str(new_state_id) != str(issue.state_id):
+                target_state = State.objects.filter(pk=new_state_id, project_id=project_id).first()
+                if target_state and target_state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
+                    return Response(
+                        {
+                            "error": "Developers cannot mark work items as completed or cancelled. Completion must be done by a Manager."
+                        },
+                        status=status.HTTP_403_FORBIDDEN,
+                    )
+
         current_instance = json.dumps(IssueDetailSerializer(issue).data, cls=DjangoJSONEncoder)
 
         serializer = IssueCreateSerializer(issue, data=request.data, partial=True, context={"project_id": project_id})
@@ -718,6 +761,32 @@ class IssueViewSet(BaseViewSet):
     @allow_permission([ROLE.ADMIN], creator=True, model=Issue)
     def destroy(self, request, slug, project_id, pk=None):
         issue = Issue.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
+
+        project = Project.objects.filter(pk=project_id, workspace__slug=slug).first()
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        is_caller_admin_or_lead = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
+            ).exists()
+            or (project and project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+        has_manager_assignee = ProjectMember.objects.filter(
+            project_id=project_id,
+            member_id__in=issue.assignees.values_list("id", flat=True),
+            role=15,
+            is_active=True,
+        ).exists()
+        if has_manager_assignee and not is_caller_admin_or_lead:
+            return Response(
+                {"error": "Work assigned to a Manager can only be modified by the Project Admin or Project Lead."},
+                status=status.HTTP_403_FORBIDDEN,
+            )
 
         issue.delete()
         # delete the issue from recent visits

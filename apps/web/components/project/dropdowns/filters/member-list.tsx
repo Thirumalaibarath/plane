@@ -33,7 +33,8 @@ type Props = {
 
 const PROJECT_ROLE_OPTIONS: IRoleOption[] = [
   { value: String(EUserProjectRoles.ADMIN), label: "Admin" },
-  { value: String(EUserProjectRoles.MEMBER), label: "Member" },
+  { value: String(EUserProjectRoles.MEMBER), label: "Manager" },
+  { value: String(EUserProjectRoles.DEVELOPER), label: "Developer" },
   { value: String(EUserProjectRoles.GUEST), label: "Guest" },
 ];
 

@@ -123,10 +123,10 @@ export const MemberSelect = observer(function MemberSelect(props: MemberSelectWe
 
   const getValues = useCallback(
     async ({ search }: SelectPaginationParams): Promise<TPaginatedResponse<MemberOption[]>> => {
-      let rosterIds = memberIds ?? (projectId ? getProjectMemberIds(projectId, false) : workspaceMemberIds);
+      let rosterIds = memberIds ?? (projectId ? getProjectMemberIds(projectId, true) : workspaceMemberIds);
       if (!rosterIds && !memberIds && projectId && slug) {
         await fetchProjectMembers(slug, projectId);
-        rosterIds = getProjectMemberIds(projectId, false);
+        rosterIds = getProjectMemberIds(projectId, true);
       }
       const query = search?.trim().toLowerCase();
       const results: MemberOption[] = [];

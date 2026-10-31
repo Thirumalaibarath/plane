@@ -65,6 +65,7 @@ export interface IInstanceConfig {
   admin_base_url: string | undefined;
   is_self_managed: boolean;
   instance_changelog_url?: string;
+  discord_url?: string;
 }
 
 export interface IInstanceAdmin {

@@ -791,11 +791,15 @@
   "role_details": {
     "guest": {
       "title": "Guest",
-      "description": "External members of organizations can be invited as guests."
+      "description": "View-only access to the project."
+    },
+    "developer": {
+      "title": "Developer",
+      "description": "Can be assigned work and move work items through progress states."
     },
     "member": {
-      "title": "Member",
-      "description": "Ability to read, write, edit, and delete entities inside projects, cycles, and modules"
+      "title": "Manager",
+      "description": "Ability to assign work, review, and complete work items inside projects."
     },
     "admin": {
       "title": "Admin",

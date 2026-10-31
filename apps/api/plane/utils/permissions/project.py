@@ -117,7 +117,7 @@ class ProjectEntityPermission(BasePermission):
         return ProjectMember.objects.filter(
             workspace__slug=view.workspace_slug,
             member=request.user,
-            role__in=[ROLE.ADMIN.value, ROLE.MEMBER.value],
+            role__in=[ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.DEVELOPER.value],
             project_id=view.project_id,
             is_active=True,
         ).exists()

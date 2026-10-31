@@ -16,6 +16,7 @@ import { useTranslation } from "@plane/i18n";
 import type { IState, TPaginatedResponse } from "@plane/types";
 // hooks
 import { useProjectState } from "@/hooks/store/use-project-state";
+import { useUserPermissions } from "@/hooks/store/user/user-permissions";
 
 type StateSelectWebProps = {
   /** Project whose states are offered. */
@@ -73,6 +74,7 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
   const { workspaceSlug } = useParams();
   // store hooks
   const { getProjectStateIds, getStateById, fetchProjectStates } = useProjectState();
+  const { getProjectRoleByWorkspaceSlugAndProjectId } = useUserPermissions();
   // translation
   const { t } = useTranslation();
   const resolvedTooltip = useMemo<SelectTooltipOverride | undefined>(() => {
@@ -83,6 +85,12 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
       emptyContent: override?.emptyContent ?? t("common.none"),
     };
   }, [tooltip, t]);
+
+  const currentRole =
+    projectId && workspaceSlug
+      ? getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug.toString(), projectId)
+      : undefined;
+  const isDeveloper = Number(currentRole) === 10;
 
   const getValues = useCallback(
     async ({ search }: SelectPaginationParams): Promise<TPaginatedResponse<StateOption[]>> => {
@@ -96,11 +104,17 @@ export const StateSelect = observer(function StateSelect(props: StateSelectWebPr
       const results = (stateIds ?? [])
         .map((stateId) => getStateById(stateId))
         .filter((state): state is IState => !!state)
+        .filter((state) => {
+          if (isDeveloper && (state.group === "completed" || state.group === "cancelled")) {
+            return false;
+          }
+          return true;
+        })
         .filter((state) => !query || state.name.toLowerCase().includes(query))
         .map(toOption);
       return { results, next_page_results: false };
     },
-    [workspaceSlug, projectId, getProjectStateIds, fetchProjectStates, getStateById]
+    [workspaceSlug, projectId, getProjectStateIds, fetchProjectStates, getStateById, isDeveloper]
   );
 
   // Resolved in the observer render (not in a memo) so MobX re-renders when the state loads.

@@ -4,6 +4,7 @@
  * See the LICENSE file for details.
  */
 
+import { useEffect, useState } from "react";
 import { observer } from "mobx-react";
 import { Controller, useForm } from "react-hook-form";
 import { UsageOutline } from "@makeplane/propel/icons";
@@ -26,7 +27,20 @@ export interface IGeneralConfigurationForm {
 export const GeneralConfigurationForm = observer(function GeneralConfigurationForm(props: IGeneralConfigurationForm) {
   const { instance, instanceAdmins } = props;
   // hooks
-  const { updateInstanceInfo } = useInstance();
+  const { updateInstanceInfo, formattedConfig, updateInstanceConfigurations, fetchInstanceConfigurations } =
+    useInstance();
+
+  const [discordUrl, setDiscordUrl] = useState<string>(formattedConfig?.DISCORD_URL ?? "");
+
+  useEffect(() => {
+    void fetchInstanceConfigurations();
+  }, [fetchInstanceConfigurations]);
+
+  useEffect(() => {
+    if (formattedConfig?.DISCORD_URL !== undefined) {
+      setDiscordUrl(formattedConfig.DISCORD_URL);
+    }
+  }, [formattedConfig?.DISCORD_URL]);
 
   // form data
   const {
@@ -43,15 +57,24 @@ export const GeneralConfigurationForm = observer(function GeneralConfigurationFo
   const onSubmit = async (formData: Partial<IInstance>) => {
     const payload: Partial<IInstance> = { ...formData };
 
-    await updateInstanceInfo(payload)
-      .then(() =>
-        setToast({
-          type: "success",
-          title: "Success",
-          message: "Settings updated successfully",
-        })
-      )
-      .catch((err) => console.error(err));
+    try {
+      await Promise.all([
+        updateInstanceInfo(payload),
+        updateInstanceConfigurations({ DISCORD_URL: discordUrl.trim() }),
+      ]);
+      setToast({
+        type: "success",
+        title: "Success",
+        message: "Settings updated successfully",
+      });
+    } catch (err) {
+      console.error(err);
+      setToast({
+        type: "error",
+        title: "Error",
+        message: "Failed to update settings",
+      });
+    }
   };
 
   return (
@@ -146,6 +169,31 @@ export const GeneralConfigurationForm = observer(function GeneralConfigurationFo
               )}
             />
           </div>
+        </div>
+      </div>
+
+      {/* Community & Discord */}
+      <div className="space-y-4">
+        <div className="border-b border-subtle pb-1.5 text-16 font-medium text-primary">Community & Support</div>
+        <div className="max-w-xl space-y-2">
+          <label className="text-13 font-medium text-primary" htmlFor="discord_url">
+            Discord Server URL
+          </label>
+          <div className="text-11 leading-5 font-regular text-tertiary">
+            Provide the invite link to your organization&apos;s Discord server. When set, a Discord button will be
+            displayed on the top right navigation bar for all users.
+          </div>
+          <InputGroup size="lg">
+            <Input
+              id="discord_url"
+              name="discord_url"
+              type="url"
+              size="lg"
+              value={discordUrl}
+              onChange={(e) => setDiscordUrl(e.target.value)}
+              placeholder="https://discord.gg/your-invite-code"
+            />
+          </InputGroup>
         </div>
       </div>
 
