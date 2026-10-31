@@ -5,6 +5,7 @@
  */
 
 import { useState } from "react";
+import { useParams } from "next/navigation";
 import { Controller, useFormContext } from "react-hook-form";
 // plane imports
 import { ETabIndices } from "@plane/constants";
@@ -18,6 +19,7 @@ import { getTabIndex } from "@plane/utils";
 // components
 import { CoverImage } from "@/components/common/cover-image";
 import { ImagePickerPopover } from "@/components/core/image-picker-popover";
+import { ProjectLogoUploadTab } from "../project-logo-upload-tab";
 
 type Props = {
   handleClose: () => void;
@@ -31,6 +33,7 @@ type Props = {
 function ProjectCreateHeader(props: Props) {
   const { handleClose, isMobile = false, handleFormOnChange, isClosable = true } = props;
   const { watch, control, setValue } = useFormContext<IProject>();
+  const { workspaceSlug } = useParams();
   const { t } = useTranslation();
   // derived values
   const coverImage = watch("cover_image_url");
@@ -94,6 +97,7 @@ function ProjectCreateHeader(props: Props) {
                     value: val.value,
                   };
                 else if (val?.type === "icon") logoValue = val.value;
+                else if (val?.type === "image") logoValue = val.value;
 
                 const newLogoProps = {
                   in_use: val?.type,
@@ -107,7 +111,51 @@ function ProjectCreateHeader(props: Props) {
                 setIsOpen(false);
               }}
               defaultIconColor={value?.in_use && value.in_use === "icon" ? value.icon?.color : undefined}
-              defaultOpen={value?.in_use && value.in_use === "emoji" ? "emoji" : "icon"}
+              defaultOpen={value?.in_use === "image" ? "upload" : value?.in_use === "emoji" ? "emoji" : "icon"}
+              customTabs={
+                workspaceSlug
+                  ? [
+                      {
+                        key: "upload",
+                        label: t("upload") || "Upload",
+                        content: (
+                          <ProjectLogoUploadTab
+                            workspaceSlug={workspaceSlug.toString()}
+                            projectId=""
+                            logoProps={value}
+                            onChange={(imageProps) => {
+                              const newLogoProps = {
+                                in_use: "image" as const,
+                                image: imageProps,
+                              };
+                              setValue("logo_props", newLogoProps, {
+                                shouldDirty: true,
+                              });
+                              onChange(newLogoProps);
+                              handleFormOnChange?.();
+                              setIsOpen(false);
+                            }}
+                            onRemove={() => {
+                              const newLogoProps = {
+                                in_use: "icon" as const,
+                                icon: {
+                                  name: "folder",
+                                  color: "#000000",
+                                },
+                              };
+                              setValue("logo_props", newLogoProps, {
+                                shouldDirty: true,
+                              });
+                              onChange(newLogoProps);
+                              handleFormOnChange?.();
+                              setIsOpen(false);
+                            }}
+                          />
+                        ),
+                      },
+                    ]
+                  : undefined
+              }
             />
           )}
         />

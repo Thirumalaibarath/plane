@@ -8,6 +8,7 @@
 // should be after the imported here rather than some below helper functions as it is in the original file
 
 import useFontFaceObserver from "use-font-face-observer";
+import { cn, getFileURL } from "@plane/utils";
 // types
 import type { Logo as LogoType } from "../types/logo";
 // local imports
@@ -18,9 +19,10 @@ export type LogoProps = {
   logo?: LogoType;
   size?: number;
   type?: "lucide" | "material";
+  className?: string;
 };
 
-export function Logo({ logo, size = 16, type = "material" }: LogoProps) {
+export function Logo({ logo, size = 16, type = "material", className }: LogoProps) {
   const isMaterialSymbolsFontLoaded = useFontFaceObserver([
     {
       family: "Material Symbols Rounded",
@@ -31,12 +33,35 @@ export function Logo({ logo, size = 16, type = "material" }: LogoProps) {
   ]);
 
   // Reusable loading skeleton
-  const loadingSkeleton = <span style={{ height: size, width: size }} className="rounded-sm bg-layer-1" />;
+  const loadingSkeleton = (
+    <span style={{ height: size, width: size }} className={cn("shrink-0 rounded-sm bg-layer-1", className)} />
+  );
 
   // Early returns for loading/empty states
   if (!logo || !logo.in_use) return loadingSkeleton;
 
-  const { in_use, emoji, icon } = logo;
+  const { in_use, emoji, icon, image } = logo;
+
+  // Image rendering
+  if (in_use === "image") {
+    const rawUrl = image?.url || (logo as any)?.url || (logo as any)?.image_url;
+    const src = rawUrl ? getFileURL(rawUrl) || rawUrl : undefined;
+
+    if (!src) return loadingSkeleton;
+
+    return (
+      <img
+        src={src}
+        alt="Project Logo"
+        className={cn("shrink-0 rounded object-cover", className)}
+        style={{
+          height: size,
+          width: size,
+        }}
+      />
+    );
+  }
+
   const value = in_use === "emoji" ? emoji?.value : icon?.name;
 
   if (!value) return loadingSkeleton;

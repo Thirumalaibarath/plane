@@ -2,7 +2,8 @@
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  * See the LICENSE file for details.
- */
+/* eslint-disable no-shadow */
+/* eslint-disable unicorn/consistent-function-scoping */
 
 export type ChangeHandlerPayload =
   | {
@@ -15,9 +16,16 @@ export type ChangeHandlerPayload =
         name: string;
         color: string;
       };
+    }
+  | {
+      type: "image";
+      value: {
+        url: string;
+        asset_id?: string;
+      };
     };
 
-export type EmojiIconPickerType = "emoji" | "icon";
+export type EmojiIconPickerType = "emoji" | "icon" | "image" | "upload";
 
 export type IconsListConfig = {
   defaultColor: string;
@@ -61,9 +69,9 @@ export const adjustColorForContrast = (hex: string): string => {
   }
 
   // Convert RGB back to hex
-  const toHex = (value: number): string => {
-    const hex = value.toString(16);
-    return hex.length === 1 ? "0" + hex : hex;
+  const toHex = (colorValue: number): string => {
+    const hexStr = colorValue.toString(16);
+    return hexStr.length === 1 ? "0" + hexStr : hexStr;
   };
 
   return `#${toHex(r)}${toHex(g)}${toHex(b)}`;

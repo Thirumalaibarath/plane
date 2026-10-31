@@ -2,7 +2,8 @@
  * Copyright (c) 2023-present Plane Software, Inc. and contributors
  * SPDX-License-Identifier: AGPL-3.0-only
  * See the LICENSE file for details.
- */
+/* eslint-disable no-shadow */
+/* eslint-disable promise/always-return */
 
 import { useEffect, useState } from "react";
 import { Controller, useForm } from "react-hook-form";
@@ -34,6 +35,7 @@ import { usePlatformOS } from "@/hooks/use-platform-os";
 import { ProjectService } from "@/services/project";
 // local imports
 import { ProjectNetworkIcon } from "./project-network-icon";
+import { ProjectLogoUploadTab } from "./project-logo-upload-tab";
 
 export interface IProjectDetailsForm {
   project: IProject;
@@ -230,6 +232,7 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                         value: val.value,
                       };
                     else if (val?.type === "icon") logoValue = val.value;
+                    else if (val?.type === "image") logoValue = val.value;
 
                     onChange({
                       in_use: val?.type,
@@ -238,8 +241,39 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                     setIsOpen(false);
                   }}
                   defaultIconColor={value?.in_use && value.in_use === "icon" ? value?.icon?.color : undefined}
-                  defaultOpen={value.in_use && value.in_use === "emoji" ? "emoji" : "icon"}
+                  defaultOpen={value?.in_use === "image" ? "upload" : value?.in_use === "emoji" ? "emoji" : "icon"}
                   disabled={!isAdmin}
+                  customTabs={[
+                    {
+                      key: "upload",
+                      label: t("upload") || "Upload",
+                      content: (
+                        <ProjectLogoUploadTab
+                          workspaceSlug={workspaceSlug.toString()}
+                          projectId={project.id}
+                          logoProps={value}
+                          onChange={(imageProps) => {
+                            onChange({
+                              in_use: "image",
+                              image: imageProps,
+                            });
+                            setIsOpen(false);
+                          }}
+                          onRemove={() => {
+                            onChange({
+                              in_use: "icon",
+                              icon: {
+                                name: "folder",
+                                color: "#000000",
+                              },
+                            });
+                            setIsOpen(false);
+                          }}
+                          disabled={!isAdmin}
+                        />
+                      ),
+                    },
+                  ]}
                 />
               )}
             />
@@ -438,8 +472,8 @@ export function ProjectDetailsForm(props: IProjectDetailsForm) {
                 <>
                   <TimezoneSelect
                     value={value}
-                    onChange={(value: string) => {
-                      onChange(value);
+                    onChange={(timezoneVal: string) => {
+                      onChange(timezoneVal);
                     }}
                     error={Boolean(errors.timezone)}
                     buttonClassName="!border-subtle !shadow-none font-medium rounded-md"

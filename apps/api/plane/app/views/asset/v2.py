@@ -57,7 +57,10 @@ def can_modify_asset(user, asset):
         # Workspace admins act as admins in the projects they belong to, as in allow_permission
         if role is not None and workspace_role == ROLE.ADMIN.value:
             role = ROLE.ADMIN.value
-        if asset.entity_type == FileAsset.EntityTypeContext.PROJECT_COVER:
+        if asset.entity_type in [
+            FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
+        ]:
             return role == ROLE.ADMIN.value
 
     if asset.created_by_id == user.id and role is not None:
@@ -248,8 +251,11 @@ class WorkspaceFileAssetEndpoint(BaseAPIView):
         if entity_type == FileAsset.EntityTypeContext.WORKSPACE_LOGO:
             return {"workspace_id": entity_id}
 
-        # Project Cover
-        if entity_type == FileAsset.EntityTypeContext.PROJECT_COVER:
+        # Project Cover & Logo
+        if entity_type in [
+            FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
+        ]:
             return {"project_id": entity_id}
 
         # User Avatar and Cover
@@ -536,6 +542,7 @@ class StaticFileAssetEndpoint(BaseAPIView):
             FileAsset.EntityTypeContext.USER_COVER,
             FileAsset.EntityTypeContext.WORKSPACE_LOGO,
             FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
         ]:
             return Response(
                 {"error": "Invalid entity type.", "status": False},
@@ -580,7 +587,10 @@ class ProjectAssetEndpoint(BaseAPIView):
         if entity_type == FileAsset.EntityTypeContext.WORKSPACE_LOGO:
             return {"workspace_id": entity_id}
 
-        if entity_type == FileAsset.EntityTypeContext.PROJECT_COVER:
+        if entity_type in [
+            FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
+        ]:
             return {"project_id": entity_id}
 
         if entity_type in [
@@ -782,6 +792,15 @@ class ProjectBulkAssetEndpoint(BaseAPIView):
             assets.update(project_id=project_id)
             [self.save_project_cover(asset, project_id) for asset in assets]
 
+        if asset.entity_type == FileAsset.EntityTypeContext.PROJECT_LOGO:
+            asset.project_id = project_id
+            if not can_modify_asset(request.user, asset):
+                return Response(
+                    {"error": "You don't have the required permissions."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            assets.update(project_id=project_id)
+
         if asset.entity_type == FileAsset.EntityTypeContext.ISSUE_DESCRIPTION:
             # For some cases, the bulk api is called after the issue is deleted creating
             # an integrity error
@@ -831,8 +850,11 @@ class DuplicateAssetEndpoint(BaseAPIView):
         if entity_type == FileAsset.EntityTypeContext.WORKSPACE_LOGO:
             return {"workspace_id": entity_id}
 
-        # Project Cover
-        if entity_type == FileAsset.EntityTypeContext.PROJECT_COVER:
+        # Project Cover & Logo
+        if entity_type in [
+            FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
+        ]:
             return {"project_id": entity_id}
 
         # User Avatar and Cover
@@ -891,9 +913,12 @@ class DuplicateAssetEndpoint(BaseAPIView):
                 status=status.HTTP_403_FORBIDDEN,
             )
 
-        # A PROJECT_COVER copy is stored on the project named by entity_id
+        # A PROJECT_COVER or PROJECT_LOGO copy is stored on the project named by entity_id
         # (see get_entity_id_field), so that is the destination to validate.
-        if entity_type == FileAsset.EntityTypeContext.PROJECT_COVER:
+        if entity_type in [
+            FileAsset.EntityTypeContext.PROJECT_COVER,
+            FileAsset.EntityTypeContext.PROJECT_LOGO,
+        ]:
             project_id = entity_id
 
         # The destination project must be in this workspace and the caller an active

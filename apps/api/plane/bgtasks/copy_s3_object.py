@@ -24,6 +24,7 @@ def get_entity_id_field(entity_type, entity_id):
     entity_mapping = {
         FileAsset.EntityTypeContext.WORKSPACE_LOGO: {"workspace_id": entity_id},
         FileAsset.EntityTypeContext.PROJECT_COVER: {"project_id": entity_id},
+        FileAsset.EntityTypeContext.PROJECT_LOGO: {"project_id": entity_id},
         FileAsset.EntityTypeContext.USER_AVATAR: {"user_id": entity_id},
         FileAsset.EntityTypeContext.USER_COVER: {"user_id": entity_id},
         FileAsset.EntityTypeContext.ISSUE_ATTACHMENT: {"issue_id": entity_id},

@@ -7,7 +7,7 @@
 // types
 import type { TLogoProps } from "@plane/types";
 // helpers
-import { cn } from "@plane/utils";
+import { cn, getFileURL } from "@plane/utils";
 
 type Props = {
   className?: string;
@@ -16,6 +16,12 @@ type Props = {
 
 export function ProjectLogo(props: Props) {
   const { className, logo } = props;
+
+  if (logo.in_use === "image" && (logo.image?.url || (logo as any)?.url)) {
+    const rawUrl = logo.image?.url || (logo as any)?.url;
+    const src = getFileURL(rawUrl) || rawUrl;
+    return <img src={src} alt="Project Logo" className={cn("h-4 w-4 rounded object-cover", className)} />;
+  }
 
   if (logo.in_use === "icon" && logo.icon)
     return (

@@ -36,6 +36,11 @@ export type EmojiPickerProps = {
   side?: Side;
   align?: Align;
   showEmojiTab?: boolean;
+  customTabs?: {
+    key: string;
+    label: string;
+    content: React.ReactNode;
+  }[];
 };
 
 export function EmojiPicker(props: EmojiPickerProps) {
@@ -57,6 +62,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
     side = "bottom",
     align = "start",
     showEmojiTab = true,
+    customTabs,
   } = props;
   // plane hooks
   const { t } = useTranslation();
@@ -135,6 +141,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
             />
           ),
         },
+        ...(customTabs || []),
       ].filter((tab): tab is NonNullable<typeof tab> => !!tab),
     [
       defaultIconColor,
@@ -145,6 +152,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
       handleEmojiChange,
       handleIconChange,
       showEmojiTab,
+      customTabs,
     ]
   );
 
@@ -177,7 +185,7 @@ export function EmojiPicker(props: EmojiPickerProps) {
         }}
       >
         <div className={cn("flex min-h-0 flex-col", dropdownClassName)}>
-          <Tabs variant="contained" stretch="full" defaultValue={showEmojiTab ? defaultOpen : "icon"}>
+          <Tabs variant="contained" stretch="full" defaultValue={defaultOpen || (showEmojiTab ? "emoji" : "icon")}>
             {tabs.length > 1 && (
               <TabsList>
                 {tabs.map((tab) => (
