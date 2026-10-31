@@ -18,7 +18,7 @@ from plane.app.views import BaseAPIView
 from plane.db.models import Workspace
 from plane.license.api.permissions import InstanceAdminPermission
 from plane.license.api.serializers import InstanceSerializer
-from plane.license.models import Instance
+from plane.license.models import Instance, InstanceConfiguration
 from plane.license.utils.instance_value import get_configuration_value
 from plane.utils.cache import cache_response, invalidate_cache
 from django.utils.decorators import method_decorator
