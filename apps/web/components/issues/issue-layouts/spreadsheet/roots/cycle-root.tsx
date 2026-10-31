@@ -16,8 +16,7 @@ import { CycleIssueQuickActions } from "../../quick-action-dropdowns";
 import { BaseSpreadsheetRoot } from "../base-spreadsheet-root";
 
 export const CycleSpreadsheetLayout = observer(function CycleSpreadsheetLayout() {
-  // router
-  const { cycleId } = useParams();
+  const { workspaceSlug, projectId, cycleId } = useParams();
   // store hooks
   const { currentProjectCompletedCycleIds } = useCycle();
   const { allowPermissions } = useUserPermissions();
@@ -26,7 +25,9 @@ export const CycleSpreadsheetLayout = observer(function CycleSpreadsheetLayout()
     cycleId && currentProjectCompletedCycleIds ? currentProjectCompletedCycleIds.includes(cycleId.toString()) : false;
   const isEditingAllowed = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug?.toString(),
+    projectId?.toString()
   );
 
   const canEditIssueProperties = useCallback(

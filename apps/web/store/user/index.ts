@@ -272,20 +272,29 @@ export class UserStore implements IUserStore {
    */
   fetchProjectsWithCreatePermissions = (): { [key: string]: TUserPermissions } => {
     const { workspaceSlug } = this.store.router;
-
+    const workspaceRole = workspaceSlug ? this.permission.getWorkspaceRoleByWorkspaceSlug(workspaceSlug) : undefined;
     const allWorkspaceProjectRoles = this.permission.getProjectRolesByWorkspaceSlug(workspaceSlug || "");
 
-    const userPermissions =
-      (allWorkspaceProjectRoles &&
-        Object.keys(allWorkspaceProjectRoles)
-          .filter((key) => allWorkspaceProjectRoles[key] >= EUserPermissions.MEMBER)
-          .reduce(
-            (res: { [projectId: string]: number }, key: string) => ((res[key] = allWorkspaceProjectRoles[key]), res),
-            {}
-          )) ||
-      null;
+    const userPermissions: { [key: string]: TUserPermissions } = {};
 
-    return userPermissions;
+    if (allWorkspaceProjectRoles) {
+      for (const key of Object.keys(allWorkspaceProjectRoles)) {
+        if (allWorkspaceProjectRoles[key] >= EUserPermissions.MEMBER) {
+          userPermissions[key] = allWorkspaceProjectRoles[key];
+        }
+      }
+    }
+
+    if (workspaceRole && Number(workspaceRole) >= EUserPermissions.MEMBER) {
+      const workspaceProjectIds = this.store.projectRoot.project.workspaceProjectIds ?? [];
+      for (const projId of workspaceProjectIds) {
+        if (!userPermissions[projId]) {
+          userPermissions[projId] = Number(workspaceRole) as TUserPermissions;
+        }
+      }
+    }
+
+    return Object.keys(userPermissions).length > 0 ? userPermissions : (null as any);
   };
 
   /**

@@ -881,25 +881,33 @@ class IssueDetailAPIEndpoint(BaseAPIView):
             ).exists()
             or (project and project.project_lead_id and project.project_lead_id == request.user.id)
         )
+        is_caller_manager = (
+            (caller_pm and caller_pm.role == 15)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=15, is_active=True
+            ).exists()
+        )
 
-        # 1. Rule: Work assigned to a Manager can ONLY be changed by that Project Admin / Project Lead
-        has_manager_assignee = ProjectMember.objects.filter(
-            project_id=project_id,
-            member_id__in=issue.assignees.values_list("id", flat=True),
-            role=15,
-            is_active=True,
-        ).exists()
-
-        if has_manager_assignee and not is_caller_admin_or_lead:
-            return Response(
-                {"error": "Work assigned to a Manager can only be modified by the Project Admin or Project Lead."},
-                status=status.HTTP_403_FORBIDDEN,
-            )
-
-        # 2. Rule: Developers can only move the block till done reviewing.
-        # Completion can only be done by a Manager or Project Admin/Lead.
-        is_developer = (caller_pm and caller_pm.role == 10) and not is_caller_admin_or_lead
+        # Developer restrictions: Developers can only view and work on items assigned to them,
+        # cannot modify work assigned to a Manager, and cannot mark items as completed/cancelled.
+        is_developer = (caller_pm and caller_pm.role == 10) and not (is_caller_admin_or_lead or is_caller_manager)
         if is_developer:
+            has_manager_assignee = ProjectMember.objects.filter(
+                project_id=project_id,
+                member_id__in=issue.assignees.values_list("id", flat=True),
+                role=15,
+                is_active=True,
+            ).exists()
+            if has_manager_assignee:
+                return Response(
+                    {"error": "Developers cannot modify work assigned to a Manager."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
+            if not issue.assignees.filter(id=request.user.id).exists():
+                return Response(
+                    {"error": "Developers can only view and work on items assigned to them."},
+                    status=status.HTTP_403_FORBIDDEN,
+                )
             if issue.state and issue.state.group in [StateGroup.COMPLETED, StateGroup.CANCELLED]:
                 return Response(
                     {"error": "Developers cannot modify completed work items."},
@@ -989,17 +997,28 @@ class IssueDetailAPIEndpoint(BaseAPIView):
         Only admins or the item creator can perform this action.
         """
         issue = Issue.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
-        if issue.created_by_id != request.user.id and (
-            not ProjectMember.objects.filter(
-                workspace__slug=slug,
-                member=request.user,
-                role=20,
-                project_id=project_id,
-                is_active=True,
+        caller_pm = ProjectMember.objects.filter(
+            workspace__slug=slug,
+            project_id=project_id,
+            member=request.user,
+            is_active=True,
+        ).first()
+        is_caller_admin_or_lead = (
+            (caller_pm and caller_pm.role == 20)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=20, is_active=True
             ).exists()
-        ):
+            or (project and project.project_lead_id and project.project_lead_id == request.user.id)
+        )
+        is_caller_manager = (
+            (caller_pm and caller_pm.role == 15)
+            or WorkspaceMember.objects.filter(
+                workspace__slug=slug, member=request.user, role=15, is_active=True
+            ).exists()
+        )
+        if issue.created_by_id != request.user.id and not (is_caller_admin_or_lead or is_caller_manager):
             return Response(
-                {"error": "Only admin or creator can delete the work item"},
+                {"error": "Only Managers, Admins, or creator can delete the work item"},
                 status=status.HTTP_403_FORBIDDEN,
             )
         current_instance = json.dumps(IssueSerializer(issue).data, cls=DjangoJSONEncoder)

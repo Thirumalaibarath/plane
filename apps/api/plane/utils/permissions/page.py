@@ -92,6 +92,15 @@ class ProjectPagePermission(BasePermission):
         """
         role = self._check_project_member_access(request, slug, project_id)
         if not role:
+            ws_role = (
+                WorkspaceMember.objects.filter(
+                    member=request.user, workspace__slug=slug, is_active=True
+                )
+                .values_list("role", flat=True)
+                .first()
+            )
+            if ws_role in [ADMIN, MEMBER]:
+                return True, ws_role
             return False, None
         return True, role
 
@@ -105,7 +114,7 @@ class ProjectPagePermission(BasePermission):
     def _check_project_action_access(self, request, role):
         method = request.method
 
-        # Only admins can create (POST) pages
+        # Only admins and members can create (POST) pages
         if method == "POST":
             if role in [ADMIN, MEMBER]:
                 return True
@@ -113,7 +122,7 @@ class ProjectPagePermission(BasePermission):
 
         # Safe methods (GET, HEAD, OPTIONS) allowed for all active roles
         if method in SAFE_METHODS:
-            if role in [ADMIN, MEMBER, GUEST]:
+            if role in [ADMIN, MEMBER, ROLE.DEVELOPER.value, GUEST]:
                 return True
             return False
 
@@ -123,9 +132,9 @@ class ProjectPagePermission(BasePermission):
                 return True
             return False
 
-        # DELETE: Only admins can delete
+        # DELETE: Admins and members can delete
         if method == "DELETE":
-            if role in [ADMIN]:
+            if role in [ADMIN, MEMBER]:
                 return True
             return False
 

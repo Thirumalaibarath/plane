@@ -373,14 +373,39 @@ class ProjectMemberViewSet(BaseViewSet):
 
 class ProjectMemberUserEndpoint(BaseAPIView):
     def get(self, request, slug, project_id):
-        project_member = ProjectMember.objects.get(
+        workspace_member = WorkspaceMember.objects.filter(
+            workspace__slug=slug, member=request.user, is_active=True
+        ).first()
+        ws_role = workspace_member.role if workspace_member else 5
+
+        project_member = ProjectMember.objects.filter(
             project_id=project_id,
             workspace__slug=slug,
             member=request.user,
             is_active=True,
-        )
-        serializer = ProjectMemberSerializer(project_member)
+        ).first()
 
+        if not project_member:
+            if workspace_member:
+                project = Project.objects.filter(pk=project_id, workspace__slug=slug).first()
+                if project:
+                    project_member = ProjectMember.objects.create(
+                        project_id=project_id,
+                        workspace_id=project.workspace_id,
+                        member=request.user,
+                        role=ws_role,
+                        is_active=True,
+                    )
+            if not project_member:
+                return Response(
+                    {"error": "Project Member does not exist"},
+                    status=status.HTTP_404_NOT_FOUND,
+                )
+        elif ws_role in [20, 15] and project_member.role < ws_role:
+            project_member.role = ws_role
+            project_member.save(update_fields=["role"])
+
+        serializer = ProjectMemberSerializer(project_member)
         return Response(serializer.data, status=status.HTTP_200_OK)
 
 
@@ -389,6 +414,11 @@ class UserProjectRolesEndpoint(BaseAPIView):
     use_read_replica = True
 
     def get(self, request, slug):
+        workspace_member = WorkspaceMember.objects.filter(
+            workspace__slug=slug, member=request.user, is_active=True
+        ).first()
+        ws_role = workspace_member.role if workspace_member else 5
+
         project_members = ProjectMember.objects.filter(
             workspace__slug=slug,
             member_id=request.user.id,
@@ -397,8 +427,19 @@ class UserProjectRolesEndpoint(BaseAPIView):
             member__member_workspace__is_active=True,
         ).values("project_id", "role")
 
-        project_members = {str(member["project_id"]): member["role"] for member in project_members}
-        return Response(project_members, status=status.HTTP_200_OK)
+        roles_dict = {str(member["project_id"]): member["role"] for member in project_members}
+
+        if ws_role in [20, 15]:
+            all_project_ids = Project.objects.filter(
+                workspace__slug=slug, archived_at__isnull=True
+            ).values_list("id", flat=True)
+            for pid in all_project_ids:
+                pid_str = str(pid)
+                current_role = roles_dict.get(pid_str, 0)
+                if current_role < ws_role:
+                    roles_dict[pid_str] = ws_role
+
+        return Response(roles_dict, status=status.HTTP_200_OK)
 
 
 class ProjectMemberPreferenceEndpoint(BaseAPIView):

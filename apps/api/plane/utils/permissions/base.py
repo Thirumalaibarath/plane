@@ -56,12 +56,10 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
 
             # Convert allowed_roles to their values if they are enum members
             allowed_role_values = [role.value if isinstance(role, ROLE) else role for role in allowed_roles]
-            # If GUEST is allowed or if MEMBER is allowed, DEVELOPER is also allowed
+            # If GUEST is allowed, DEVELOPER is also allowed
             if (
                 ROLE.GUEST.value in allowed_role_values
                 or ROLE.GUEST in allowed_roles
-                or ROLE.MEMBER.value in allowed_role_values
-                or ROLE.MEMBER in allowed_roles
             ) and (
                 ROLE.DEVELOPER.value not in allowed_role_values
                 and ROLE.DEVELOPER not in allowed_roles
@@ -86,20 +84,24 @@ def allow_permission(allowed_roles, level="PROJECT", creator=False, model=None):
                     is_active=True,
                 ).exists()
 
-                # Return if the user has the allowed role else if they are workspace admin and part of the project regardless of the role # noqa: E501
+                # Return if the user has the allowed role else if they are workspace admin or manager
                 if is_user_has_allowed_role:
                     return view_func(instance, request, *args, **kwargs)
                 elif (
-                    ProjectMember.objects.filter(
-                        member=request.user,
-                        workspace__slug=kwargs["slug"],
-                        project_id=kwargs["project_id"],
-                        is_active=True,
-                    ).exists()
-                    and WorkspaceMember.objects.filter(
+                    WorkspaceMember.objects.filter(
                         member=request.user,
                         workspace__slug=kwargs["slug"],
                         role=ROLE.ADMIN.value,
+                        is_active=True,
+                    ).exists()
+                ):
+                    return view_func(instance, request, *args, **kwargs)
+                elif (
+                    (ROLE.MEMBER.value in allowed_role_values or ROLE.MEMBER in allowed_roles)
+                    and WorkspaceMember.objects.filter(
+                        member=request.user,
+                        workspace__slug=kwargs["slug"],
+                        role=ROLE.MEMBER.value,
                         is_active=True,
                     ).exists()
                 ):

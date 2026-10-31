@@ -475,7 +475,7 @@ class CycleViewSet(BaseViewSet):
         )
         return Response(data, status=status.HTTP_200_OK)
 
-    @allow_permission([ROLE.ADMIN], creator=True, model=Cycle)
+    @allow_permission([ROLE.ADMIN, ROLE.MEMBER], creator=True, model=Cycle)
     def destroy(self, request, slug, project_id, pk):
         cycle = Cycle.objects.get(workspace__slug=slug, project_id=project_id, pk=pk)
 

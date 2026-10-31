@@ -109,7 +109,9 @@ export const ProjectViewIssuesHeader = observer(function ProjectViewIssuesHeader
 
   const canUserCreateIssue = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug?.toString(),
+    projectId?.toString()
   );
 
   if (!viewDetails) return;

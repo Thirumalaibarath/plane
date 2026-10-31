@@ -121,13 +121,32 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
    */
   protected getProjectRole = computedFn((workspaceSlug: string, projectId?: string): EUserPermissions | undefined => {
     if (!workspaceSlug || !projectId) return undefined;
+    const workspaceRole = this.workspaceUserInfo?.[workspaceSlug]?.role;
+    if (workspaceRole === EUserWorkspaceRoles.ADMIN) return EUserPermissions.ADMIN;
+
     const projectRole =
       this.workspaceProjectsPermissions?.[workspaceSlug]?.[projectId] ??
       this.projectUserInfo?.[workspaceSlug]?.[projectId]?.role;
-    if (!projectRole) return undefined;
-    const workspaceRole = this.workspaceUserInfo?.[workspaceSlug]?.role;
-    if (workspaceRole === EUserWorkspaceRoles.ADMIN) return EUserPermissions.ADMIN;
-    return typeof projectRole === "string" ? (parseInt(projectRole) as EUserPermissions) : projectRole;
+
+    const numericProjectRole =
+      projectRole !== undefined && projectRole !== null
+        ? typeof projectRole === "string"
+          ? parseInt(projectRole)
+          : projectRole
+        : undefined;
+
+    if (workspaceRole === EUserWorkspaceRoles.MEMBER) {
+      if (numericProjectRole === undefined || numericProjectRole < EUserPermissions.MEMBER) {
+        return EUserPermissions.MEMBER;
+      }
+      return numericProjectRole as EUserPermissions;
+    }
+
+    if (numericProjectRole !== undefined) {
+      return numericProjectRole as EUserPermissions;
+    }
+
+    return undefined;
   });
 
   /**
@@ -137,7 +156,9 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
    */
   getProjectRolesByWorkspaceSlug = computedFn((workspaceSlug: string): IUserProjectsRole => {
     const projectPermissions = this.workspaceProjectsPermissions[workspaceSlug] || {};
-    return Object.keys(projectPermissions).reduce((acc, projectId) => {
+    const workspaceProjectIds = this.store.projectRoot.project.workspaceProjectIds ?? [];
+    const allProjectIds = Array.from(new Set([...Object.keys(projectPermissions), ...workspaceProjectIds]));
+    return allProjectIds.reduce((acc, projectId) => {
       const projectRole = this.getProjectRoleByWorkspaceSlugAndProjectId(workspaceSlug, projectId);
       if (projectRole) {
         acc[projectId] = projectRole;

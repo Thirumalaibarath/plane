@@ -80,7 +80,9 @@ export const ModuleIssuesHeader = observer(function ModuleIssuesHeader() {
   const moduleDetails = moduleId ? getModuleById(moduleId) : undefined;
   const canUserCreateIssue = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug?.toString(),
+    projectId?.toString()
   );
   const workItemsCount = getGroupIssueCount(undefined, undefined, false);
 

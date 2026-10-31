@@ -30,7 +30,9 @@ export const CycleKanBanLayout = observer(function CycleKanBanLayout() {
     cycleId && currentProjectCompletedCycleIds ? currentProjectCompletedCycleIds.includes(cycleId.toString()) : false;
   const isEditingAllowed = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug?.toString(),
+    projectId?.toString()
   );
 
   const canEditIssueProperties = useCallback(
@@ -43,7 +45,7 @@ export const CycleKanBanLayout = observer(function CycleKanBanLayout() {
       if (!workspaceSlug || !projectId || !cycleId) throw new Error();
       return issues.addIssueToCycle(workspaceSlug.toString(), projectId.toString(), cycleId.toString(), issueIds);
     },
-    [issues?.addIssueToCycle, workspaceSlug, projectId, cycleId]
+    [issues, workspaceSlug, projectId, cycleId]
   );
 
   return (

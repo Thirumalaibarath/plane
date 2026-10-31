@@ -114,7 +114,9 @@ export const CycleIssuesHeader = observer(function CycleIssuesHeader() {
   const isCompletedCycle = cycleDetails?.status?.toLocaleLowerCase() === "completed";
   const canUserCreateIssue = allowPermissions(
     [EUserPermissions.ADMIN, EUserPermissions.MEMBER],
-    EUserPermissionsLevel.PROJECT
+    EUserPermissionsLevel.PROJECT,
+    workspaceSlug?.toString(),
+    projectId?.toString()
   );
 
   const workItemsCount = getGroupIssueCount(undefined, undefined, false);
