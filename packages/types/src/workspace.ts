@@ -15,6 +15,7 @@ import type { IWorkspaceViewProps } from "./view-props";
 export enum EUserWorkspaceRoles {
   ADMIN = 20,
   MEMBER = 15,
+  DEVELOPER = 10,
   GUEST = 5,
 }
 

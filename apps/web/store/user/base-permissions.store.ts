@@ -121,11 +121,13 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
    */
   protected getProjectRole = computedFn((workspaceSlug: string, projectId?: string): EUserPermissions | undefined => {
     if (!workspaceSlug || !projectId) return undefined;
-    const projectRole = this.workspaceProjectsPermissions?.[workspaceSlug]?.[projectId];
+    const projectRole =
+      this.workspaceProjectsPermissions?.[workspaceSlug]?.[projectId] ??
+      this.projectUserInfo?.[workspaceSlug]?.[projectId]?.role;
     if (!projectRole) return undefined;
     const workspaceRole = this.workspaceUserInfo?.[workspaceSlug]?.role;
     if (workspaceRole === EUserWorkspaceRoles.ADMIN) return EUserPermissions.ADMIN;
-    else return projectRole;
+    return typeof projectRole === "string" ? (parseInt(projectRole) as EUserPermissions) : projectRole;
   });
 
   /**
@@ -220,9 +222,17 @@ export class BaseUserPermissionStore implements IBaseUserPermissionStore {
     }
 
     const effectiveRoles = [...allowPermissions];
-    if (effectiveRoles.includes(EUserPermissions.GUEST) || effectiveRoles.includes(EUserPermissions.MEMBER)) {
+    if (
+      effectiveRoles.includes(EUserPermissions.GUEST) ||
+      effectiveRoles.includes(EUserPermissions.MEMBER) ||
+      effectiveRoles.includes(5) ||
+      effectiveRoles.includes(15)
+    ) {
       if (!effectiveRoles.includes(EUserPermissions.DEVELOPER)) {
         effectiveRoles.push(EUserPermissions.DEVELOPER);
+      }
+      if (!effectiveRoles.includes(10)) {
+        effectiveRoles.push(10);
       }
     }
 

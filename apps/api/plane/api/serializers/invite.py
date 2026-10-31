@@ -46,7 +46,7 @@ class WorkspaceInviteSerializer(BaseSerializer):
         return value
 
     def validate_role(self, value):
-        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.GUEST.value]:
+        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.DEVELOPER.value, ROLE.GUEST.value]:
             raise serializers.ValidationError("Invalid role", code="INVALID_WORKSPACE_MEMBER_ROLE")
         return value
 

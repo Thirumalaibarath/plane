@@ -147,10 +147,14 @@ export const AccountTypeColumn = observer(function AccountTypeColumn(props: Acco
     const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role as EUserPermissions | undefined;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
-    const isGuest = [EUserPermissions.GUEST].includes(currentMemberWorkspaceRole);
-
     return Object.fromEntries(
-      Object.entries(ROLE).filter(([key]) => !isGuest || parseInt(key) === EUserPermissions.GUEST)
+      Object.entries(ROLE).filter(([key]) => {
+        const roleKey = parseInt(key);
+        if (currentMemberWorkspaceRole === EUserPermissions.ADMIN) {
+          return roleKey === EUserPermissions.ADMIN;
+        }
+        return roleKey <= currentMemberWorkspaceRole;
+      })
     );
   };
 

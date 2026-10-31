@@ -98,7 +98,7 @@ const InstanceUsersPage = observer(function InstanceUsersPage(_props: Route.Comp
     if (formattedConfig && !isListInitialized) {
       const parsed = rawAllowedUsers
         .split(/[\s,\n;]+/)
-        .map((item) => item.trim())
+        .map((item: string) => item.trim())
         .filter(Boolean);
       setAllowedUsersList(parsed);
       setIsListInitialized(true);

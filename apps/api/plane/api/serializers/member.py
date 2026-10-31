@@ -33,7 +33,7 @@ class ProjectMemberSerializer(BaseSerializer):
         return value
 
     def validate_role(self, value):
-        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.GUEST.value]:
+        if value not in [ROLE.ADMIN.value, ROLE.MEMBER.value, ROLE.DEVELOPER.value, ROLE.GUEST.value]:
             raise serializers.ValidationError("Invalid role", code="INVALID_ROLE")
         return value
 
@@ -53,7 +53,7 @@ class ProjectMemberSerializer(BaseSerializer):
             )
             if workspace_role is None:
                 raise serializers.ValidationError({"member": "Member not found in workspace"}, code="INVALID_MEMBER")
-            if workspace_role == ROLE.GUEST.value and role in [ROLE.ADMIN.value, ROLE.MEMBER.value]:
+            if role > workspace_role:
                 raise serializers.ValidationError(
                     "You cannot assign a role higher than the member's workspace role",
                     code="INVALID_ROLE",

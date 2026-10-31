@@ -79,7 +79,7 @@ export const RESTRICTED_URLS: string[] = [
 
 export const ROLE: Record<number, string> = {
   [EUserWorkspaceRoles.GUEST]: "Guest",
-  10: "Developer",
+  [EUserWorkspaceRoles.DEVELOPER]: "Developer",
   [EUserWorkspaceRoles.MEMBER]: "Manager",
   [EUserWorkspaceRoles.ADMIN]: "Admin",
 };
@@ -89,7 +89,7 @@ export const ROLE_DETAILS = {
     i18n_title: "role_details.guest.title",
     i18n_description: "role_details.guest.description",
   },
-  10: {
+  [EUserWorkspaceRoles.DEVELOPER]: {
     i18n_title: "role_details.developer.title",
     i18n_description: "role_details.developer.description",
   },

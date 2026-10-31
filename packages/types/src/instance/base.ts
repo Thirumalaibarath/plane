@@ -85,7 +85,10 @@ export type TInstanceConfigurationKeys =
   | TInstanceEmailConfigurationKeys
   | TInstanceImageConfigurationKeys
   | TInstanceAuthenticationKeys
-  | TInstanceWorkspaceConfigurationKeys;
+  | TInstanceWorkspaceConfigurationKeys
+  | "DISCORD_URL"
+  | "DAUTH_ENFORCE_ALLOWLIST"
+  | "DAUTH_ALLOWED_USERS";
 
 export interface IInstanceConfiguration {
   id: string;

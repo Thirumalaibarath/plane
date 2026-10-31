@@ -100,22 +100,20 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
 
     const payload = { ...formData };
 
-    await bulkAddMembersToProject(workspaceSlug.toString(), projectId.toString(), payload)
-      .then(() => {
-        if (onSuccess) onSuccess();
-        onClose();
-        setToast({
-          title: "Success!",
-          type: "success",
-          message: "Members added successfully.",
-        });
-      })
-      .catch((error) => {
-        console.error(error);
-      })
-      .finally(() => {
-        reset(defaultValues);
+    try {
+      await bulkAddMembersToProject(workspaceSlug.toString(), projectId.toString(), payload);
+      if (onSuccess) onSuccess();
+      onClose();
+      setToast({
+        title: "Success!",
+        type: "success",
+        message: "Members added successfully.",
       });
+    } catch (error) {
+      console.error(error);
+    } finally {
+      reset(defaultValues);
+    }
   };
 
   const handleClose = () => {
@@ -149,12 +147,14 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     const currentMemberWorkspaceRole = getWorkspaceMemberDetails(value)?.role;
     if (!value || !currentMemberWorkspaceRole) return ROLE;
 
-    const isGuestOROwner = [EUserPermissions.ADMIN, EUserPermissions.GUEST].includes(
-      currentMemberWorkspaceRole as EUserPermissions
-    );
-
     return Object.fromEntries(
-      Object.entries(ROLE).filter(([key]) => !isGuestOROwner || [currentMemberWorkspaceRole].includes(parseInt(key)))
+      Object.entries(ROLE).filter(([key]) => {
+        const roleKey = parseInt(key);
+        if (currentMemberWorkspaceRole === EUserPermissions.ADMIN) {
+          return roleKey === EUserPermissions.ADMIN;
+        }
+        return roleKey <= currentMemberWorkspaceRole;
+      })
     );
   };
 
@@ -167,9 +167,8 @@ export const SendProjectInvitationModal = observer(function SendProjectInvitatio
     onChange(memberId);
     // Update the role to the workspace role when member ID changes
     const workspaceMemberDetails = getWorkspaceMemberDetails(memberId);
-    const workspaceRole = workspaceMemberDetails?.role ?? 5;
-    const newValue = ROLE[workspaceRole].toUpperCase();
-    setValue(`members.${index}.role`, EUserPermissions[newValue as keyof typeof EUserPermissions]);
+    const workspaceRole = (workspaceMemberDetails?.role ?? EUserPermissions.GUEST) as EUserPermissions;
+    setValue(`members.${index}.role`, workspaceRole);
   };
 
   return (

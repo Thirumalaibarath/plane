@@ -85,7 +85,10 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
     () => fetchProjectDetails(workspaceSlug, projectId)
   );
   // fetching user project member information
-  useSWR(PROJECT_ME_INFORMATION(workspaceSlug, projectId), () => fetchUserProjectInfo(workspaceSlug, projectId));
+  const { isLoading: isProjectUserInfoLoading, error: projectUserInfoError } = useSWR(
+    PROJECT_ME_INFORMATION(workspaceSlug, projectId),
+    () => fetchUserProjectInfo(workspaceSlug, projectId)
+  );
   // fetching project member preferences
   useSWR(
     currentUserData?.id ? PROJECT_MEMBER_PREFERENCES(projectId, currentProjectRole) : null,
@@ -142,14 +145,17 @@ export const ProjectAuthWrapper = observer(function ProjectAuthWrapper(props: IP
     joinProject(workspaceSlug, projectId).finally(() => setIsJoiningProject(false));
   };
 
-  const isProjectLoading = (isParentLoading || isProjectDetailsLoading) && !projectDetailsError;
+  const isProjectLoading =
+    (isParentLoading || isProjectDetailsLoading || (isProjectUserInfoLoading && currentProjectRole === undefined)) &&
+    !projectDetailsError &&
+    !projectUserInfoError;
 
   if (isProjectLoading) return null;
 
   if (!isProjectLoading && hasPermissionToCurrentProject === false) {
     return (
       <ProjectAccessRestriction
-        errorStatusCode={projectDetailsError?.status}
+        errorStatusCode={projectDetailsError?.status ?? projectUserInfoError?.status}
         isWorkspaceAdmin={isWorkspaceAdmin}
         handleJoinProject={handleJoinProject}
         isJoinButtonDisabled={isJoiningProject}
